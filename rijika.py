@@ -1692,6 +1692,8 @@ class FinanceGame:
                 if close_btn.hover:
                     self._toggle_help()
                     break
+    
+    def _draw_event_modal(self, events):
         """Draw emergency event modal"""
         # Dim background
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
