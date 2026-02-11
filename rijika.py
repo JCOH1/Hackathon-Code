@@ -1937,159 +1937,103 @@ class FinanceGame:
         
         action_type = button.action_type
         
-        if action_type in ['save', 'invest']:
-            # Horizontal layout
-            option_w = 100
-            option_h = 45
-            dropdown_w = option_w * 4 + 20
-            dropdown_h = option_h + 15
-            
-            dropdown_x = button.rect.x
-            dropdown_y = button.rect.y - dropdown_h - 5
-            
-            if dropdown_x + dropdown_w > SCREEN_WIDTH:
-                dropdown_x = SCREEN_WIDTH - dropdown_w - 10
-            if dropdown_y < 0:
-                dropdown_y = button.rect.y + button.rect.height + 5
-            
-            dropdown_rect = pygame.Rect(dropdown_x, dropdown_y, dropdown_w, dropdown_h)
-            
-            mouse_pos = pygame.mouse.get_pos()
-            self.dropdown_hover = dropdown_rect.collidepoint(mouse_pos)
-            
-            if self.dropdown_hover or button.rect.collidepoint(mouse_pos):
-                self.dropdown_last_hover_time = pygame.time.get_ticks()
-            
-            for i in range(dropdown_rect.height):
-                ratio = i / dropdown_rect.height
-                color = (
-                    int(COLOR_PANEL[0] * (1 - ratio * 0.3)),
-                    int(COLOR_PANEL[1] * (1 - ratio * 0.3)),
-                    int(COLOR_PANEL[2] * (1 - ratio * 0.3))
-                )
-                pygame.draw.line(screen, color, 
-                               (dropdown_rect.x, dropdown_rect.y + i),
-                               (dropdown_rect.x + dropdown_rect.width, dropdown_rect.y + i))
-            
-            pygame.draw.rect(screen, COLOR_PRIMARY, dropdown_rect, 2, border_radius=8)
-            
-            if action_type == 'save':
-                amounts = [(100, "$100"), (500, "$500"), (1000, "$1k"), (None, "Custom")]
-            else:
-                amounts = [(1000, "$1k"), (5000, "$5k"), (10000, "$10k"), (None, "Custom")]
-            
-            for idx, (amount, label) in enumerate(amounts):
-                opt_rect = pygame.Rect(dropdown_x + 5 + idx * option_w, 
-                                     dropdown_y + 5, 
-                                     option_w - 5, 
-                                     option_h - 5)
-                opt_hover = opt_rect.collidepoint(mouse_pos)
-                affordable = True
-                if amount is not None:
-                    if action_type == 'save' and self.money < amount:
-                        affordable = False
-                    elif action_type == 'invest' and self.money < amount:
-                        affordable = False
-                
-                if not affordable:
-                    bg_color = (40, 45, 55)
-                    text_color = (80, 85, 95)
-                elif opt_hover:
-                    bg_color = COLOR_PRIMARY
-                    text_color = COLOR_BG
-                else:
-                    bg_color = COLOR_PANEL_HOVER
-                    text_color = COLOR_TEXT
-                
-                pygame.draw.rect(screen, bg_color, opt_rect, border_radius=5)
-                text_surf = self.font_tiny.render(label, True, text_color)
-                text_rect = text_surf.get_rect(center=opt_rect.center)
-                screen.blit(text_surf, text_rect)
-                
-                if opt_hover and affordable and pygame.mouse.get_pressed()[0]:
-                    if amount is None:
-                        self.open_custom_input(action_type)
-                    else:
-                        self.execute_financial_action(action_type, amount)
-                    return True
+        # HORIZONTAL LAYOUT FOR ALL FINANCIAL ACTIONS
+        option_w = 100
+        option_h = 45
+        dropdown_w = option_w * 4 + 20
+        dropdown_h = option_h + 15
         
-        else:
-            # Vertical layout
-            dropdown_w = 180
-            dropdown_h = 200
-            option_h = 45
-            
-            dropdown_x = button.rect.x
+        dropdown_x = button.rect.x
+        
+        # POSITIONING: Invest & Save ABOVE, Withdraw & Pay Debt BELOW
+        if action_type in ['invest', 'save']:
+            dropdown_y = button.rect.y - dropdown_h - 5  # ABOVE
+        else:  # withdraw, pay_debt
+            dropdown_y = button.rect.y + button.rect.height + 5  # BELOW
+        
+        if dropdown_x + dropdown_w > SCREEN_WIDTH:
+            dropdown_x = SCREEN_WIDTH - dropdown_w - 10
+        
+        # Keep dropdown on screen
+        if dropdown_y < 0:
             dropdown_y = button.rect.y + button.rect.height + 5
+        if dropdown_y + dropdown_h > SCREEN_HEIGHT - 100:
+            dropdown_y = button.rect.y - dropdown_h - 5
+        
+        dropdown_rect = pygame.Rect(dropdown_x, dropdown_y, dropdown_w, dropdown_h)
+        
+        mouse_pos = pygame.mouse.get_pos()
+        self.dropdown_hover = dropdown_rect.collidepoint(mouse_pos)
+        
+        if self.dropdown_hover or button.rect.collidepoint(mouse_pos):
+            self.dropdown_last_hover_time = pygame.time.get_ticks()
+        
+        for i in range(dropdown_rect.height):
+            ratio = i / dropdown_rect.height
+            color = (
+                int(COLOR_PANEL[0] * (1 - ratio * 0.3)),
+                int(COLOR_PANEL[1] * (1 - ratio * 0.3)),
+                int(COLOR_PANEL[2] * (1 - ratio * 0.3))
+            )
+            pygame.draw.line(screen, color, 
+                        (dropdown_rect.x, dropdown_rect.y + i),
+                        (dropdown_rect.x + dropdown_rect.width, dropdown_rect.y + i))
+        
+        pygame.draw.rect(screen, COLOR_PRIMARY, dropdown_rect, 2, border_radius=8)
+        
+        # Set amounts based on action type
+        if action_type == 'save':
+            amounts = [(100, "$100"), (500, "$500"), (1000, "$1k"), (None, "Custom")]
+        elif action_type == 'invest':
+            amounts = [(1000, "$1k"), (5000, "$5k"), (10000, "$10k"), (None, "Custom")]
+        elif action_type == 'withdraw':
+            amounts = [(500, "$500"), (1000, "$1k"), (5000, "$5k"), (None, "Custom")]
+        elif action_type == 'pay_debt':
+            amounts = [(1000, "$1k"), (5000, "$5k"), (10000, "$10k"), (None, "Custom")]
+        else:
+            amounts = [(1000, "$1k"), (3000, "$3k"), (5000, "$5k"), (None, "Custom")]
+        
+        # Draw options HORIZONTALLY
+        for idx, (amount, label) in enumerate(amounts):
+            opt_rect = pygame.Rect(dropdown_x + 5 + idx * option_w, 
+                                dropdown_y + 5, 
+                                option_w - 5, 
+                                option_h - 5)
+            opt_hover = opt_rect.collidepoint(mouse_pos)
+            affordable = True
+            if amount is not None:
+                if action_type == 'save' and self.money < amount:
+                    affordable = False
+                elif action_type == 'invest' and self.money < amount:
+                    affordable = False
+                elif action_type == 'withdraw' and self.emergency_fund < amount:
+                    affordable = False
+                elif action_type == 'pay_debt' and (self.money < amount or self.debt < amount):
+                    affordable = False
             
-            if dropdown_x + dropdown_w > SCREEN_WIDTH:
-                dropdown_x = SCREEN_WIDTH - dropdown_w - 10
-            if dropdown_y + dropdown_h > SCREEN_HEIGHT - 100:
-                dropdown_y = button.rect.y - dropdown_h - 5
-            
-            dropdown_rect = pygame.Rect(dropdown_x, dropdown_y, dropdown_w, dropdown_h)
-            
-            mouse_pos = pygame.mouse.get_pos()
-            self.dropdown_hover = dropdown_rect.collidepoint(mouse_pos)
-            
-            if self.dropdown_hover or button.rect.collidepoint(mouse_pos):
-                self.dropdown_last_hover_time = pygame.time.get_ticks()
-            
-            for i in range(dropdown_rect.height):
-                ratio = i / dropdown_rect.height
-                color = (
-                    int(COLOR_PANEL[0] * (1 - ratio * 0.3)),
-                    int(COLOR_PANEL[1] * (1 - ratio * 0.3)),
-                    int(COLOR_PANEL[2] * (1 - ratio * 0.3))
-                )
-                pygame.draw.line(screen, color, 
-                               (dropdown_rect.x, dropdown_rect.y + i),
-                               (dropdown_rect.x + dropdown_rect.width, dropdown_rect.y + i))
-            
-            pygame.draw.rect(screen, COLOR_PRIMARY, dropdown_rect, 2, border_radius=8)
-            
-            if action_type == 'withdraw':
-                amounts = [(500, "$500"), (1000, "$1k"), (5000, "$5k"), (None, "Custom")]
+            if not affordable:
+                bg_color = (40, 45, 55)
+                text_color = (80, 85, 95)
+            elif opt_hover:
+                bg_color = COLOR_PRIMARY
+                text_color = COLOR_BG
             else:
-                amounts = [(1000, "$1k"), (5000, "$5k"), (10000, "$10k"), (None, "Custom")]
+                bg_color = COLOR_PANEL_HOVER
+                text_color = COLOR_TEXT
             
-            for idx, (amount, label) in enumerate(amounts):
-                opt_rect = pygame.Rect(dropdown_x + 5, 
-                                     dropdown_y + 5 + idx * option_h, 
-                                     dropdown_w - 10, 
-                                     option_h - 5)
-                opt_hover = opt_rect.collidepoint(mouse_pos)
-                affordable = True
-                if amount is not None:
-                    if action_type == 'withdraw' and self.emergency_fund < amount:
-                        affordable = False
-                    elif action_type == 'pay_debt' and (self.money < amount or self.debt < amount):
-                        affordable = False
-                
-                if not affordable:
-                    bg_color = (40, 45, 55)
-                    text_color = (80, 85, 95)
-                elif opt_hover:
-                    bg_color = COLOR_PRIMARY
-                    text_color = COLOR_BG
+            pygame.draw.rect(screen, bg_color, opt_rect, border_radius=5)
+            text_surf = self.font_tiny.render(label, True, text_color)
+            text_rect = text_surf.get_rect(center=opt_rect.center)
+            screen.blit(text_surf, text_rect)
+            
+            if opt_hover and affordable and pygame.mouse.get_pressed()[0]:
+                if amount is None:
+                    self.open_custom_input(action_type)
                 else:
-                    bg_color = COLOR_PANEL_HOVER
-                    text_color = COLOR_TEXT
-                
-                pygame.draw.rect(screen, bg_color, opt_rect, border_radius=5)
-                text_surf = self.font_tiny.render(label, True, text_color)
-                text_rect = text_surf.get_rect(center=opt_rect.center)
-                screen.blit(text_surf, text_rect)
-                
-                if opt_hover and affordable and pygame.mouse.get_pressed()[0]:
-                    if amount is None:
-                        self.open_custom_input(action_type)
-                    else:
-                        self.execute_financial_action(action_type, amount)
-                    return True
+                    self.execute_financial_action(action_type, amount)
+                return True
         
         return False
-    
     def _draw_custom_input_modal(self, events):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
