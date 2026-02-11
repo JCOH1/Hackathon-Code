@@ -7,6 +7,8 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Callable
 import math
+import uuid
+import threading
 
 # Initialize Pygame
 pygame.init()
@@ -33,12 +35,205 @@ COLOR_BORDER = (60, 80, 100)     # Steel Blue
 COLOR_GRADIENT_START = (0, 150, 255)   # Bright Blue
 COLOR_GRADIENT_END = (100, 50, 200)    # Deep Purple
 
-# Game Configuration
+# Game Configuration - MUST BE BEFORE AI CHATBOT
 MONTHS_PER_GAME = 24
 STARTING_HAPPINESS = 50
 BURNOUT_STRESS = 100
 BURNOUT_HAPPINESS = 10
 ACTIONS_PER_MONTH = 3
+
+# ============================================================
+# SIMPLE HINT CHATBOT - No LangChain dependencies, works immediately
+# ============================================================
+
+class SimpleHintBot:
+    """Simple hint system without LangChain dependencies"""
+    
+    def __init__(self):
+        self.name = "Finley"
+        self.avatar = "🦊"
+        self.enabled = True
+        self.is_thinking = False
+        self.last_response = "Hi! I'm Finley, your financial assistant! Ask me for tips! 🦊"
+        self.ready = True
+        
+        # Pre-defined hints and tips
+        self.hints = {
+            "invest": [
+                "💡 Investing early lets compound interest work for you!",
+                "💡 Try investing $1k-$5k when you have extra cash.",
+                "💡 Higher risk = higher potential returns, but don't invest your emergency fund!"
+            ],
+            "save": [
+                "💡 Aim for 3 months of expenses in your emergency fund!",
+                "💡 Save at least $100 each month to build your safety net.",
+                "💡 Emergency fund protects you from unexpected costs like medical bills."
+            ],
+            "debt": [
+                "💡 Pay off high-interest debt first to reduce stress!",
+                "💡 Every $1k debt payment reduces your stress by 5%.",
+                "💡 Being debt-free is one of the 4 main goals!"
+            ],
+            "happiness": [
+                "💡 Low happiness causes debuffs! Take a vacation or date night.",
+                "💡 Balance work and life - don't forget leisure activities!",
+                "💡 Happiness below 30% will make you distracted and lose income."
+            ],
+            "stress": [
+                "💡 High stress leads to burnout! Use therapy or pay debt.",
+                "💡 Stress above 80% is dangerous - take action quickly!",
+                "💡 Emergency fund and low debt both help reduce stress."
+            ],
+            "education": [
+                "🎓 University adds +$1500/month income but costs $30k debt and +15 stress!",
+                "🎓 Masters requires University first, adds +$1000/month, costs $50k debt and +20 stress!",
+                "🎓 Higher education is worth it long-term, but manage your stress levels!"
+            ],
+            "general": [
+                f"💡 You have {ACTIONS_PER_MONTH} actions per month - use them wisely!",
+                "💡 Complete all 4 goals for maximum bonus points!",
+                "💡 Right-click any action to lock it for next month!",
+                "💡 Net Worth = Cash + Investments + Emergency - Debt",
+                "💡 You started in Month 0 - survive 24 months to win!"
+            ]
+        }
+    
+    def ask(self, question, game_state=None):
+        """Simple keyword-based hint system"""
+        self.is_thinking = True
+        question = question.lower()
+        
+        # Add game context if available
+        context = ""
+        if game_state:
+            context = f"(Month {game_state.get('month', 0)} - "
+            context += f"Cash: ${game_state.get('money', 0):,.0f}) "
+        
+        if "invest" in question:
+            response = random.choice(self.hints["invest"])
+        elif "save" in question or "emergency" in question:
+            response = random.choice(self.hints["save"])
+        elif "debt" in question or "pay" in question:
+            response = random.choice(self.hints["debt"])
+        elif "happ" in question or "fun" in question or "leisure" in question:
+            response = random.choice(self.hints["happiness"])
+        elif "stress" in question or "burnout" in question or "therapy" in question:
+            response = random.choice(self.hints["stress"])
+        elif "edu" in question or "university" in question or "master" in question or "degree" in question:
+            response = random.choice(self.hints["education"])
+        elif "help" in question or "what" in question or "how" in question or "?" in question:
+            response = random.choice(self.hints["general"])
+        else:
+            response = random.choice(self.hints["general"])
+        
+        self.last_response = context + response
+        self.is_thinking = False
+        return self.last_response
+    
+    def get_context_from_game(self, game):
+        """Extract relevant game state for context"""
+        return {
+            'month': game.current_month,
+            'money': game.money,
+            'debt': game.debt,
+            'investments': game.investments,
+            'emergency_fund': game.emergency_fund,
+            'happiness': game.happiness,
+            'stress': game.stress,
+            'actions_remaining': game.actions_remaining
+        }
+    
+    def reset_conversation(self):
+        """Reset the conversation"""
+        self.last_response = "Conversation reset! How can I help you? 🦊"
+
+# Initialize global chatbot instance
+finance_chatbot = SimpleHintBot()
+
+# ============================================================
+# AI Chatbot UI Components
+# ============================================================
+
+def draw_chatbot_icon(screen, x, y, is_thinking=False, has_new_message=False):
+    """Draw a cute chatbot icon in the corner"""
+    # Draw circular background
+    pygame.draw.circle(screen, COLOR_ACCENT, (x, y), 30)
+    pygame.draw.circle(screen, COLOR_PRIMARY, (x, y), 32, 2)
+    
+    # Draw avatar
+    font = pygame.font.SysFont("Arial", 36, bold=True)
+    text = font.render("🦊", True, COLOR_TEXT)
+    text_rect = text.get_rect(center=(x, y))
+    screen.blit(text, text_rect)
+    
+    # Thinking animation
+    if is_thinking:
+        t = pygame.time.get_ticks() * 0.01
+        dots = "." * (int(t) % 4)
+        font_small = pygame.font.SysFont("Arial", 14)
+        thinking_text = font_small.render(f"thinking{dots}", True, COLOR_TEXT_DIM)
+        screen.blit(thinking_text, (x - 30, y + 35))
+    
+    # Notification dot for new message
+    if has_new_message and not is_thinking:
+        pygame.draw.circle(screen, COLOR_SUCCESS, (x + 20, y - 20), 8)
+        pygame.draw.circle(screen, COLOR_TEXT, (x + 20, y - 20), 10, 1)
+
+def draw_chatbot_modal(screen, font, chatbot, game_state=None):
+    """Draw the chatbot conversation modal"""
+    modal_w, modal_h = 500, 600
+    modal_x = SCREEN_WIDTH - modal_w - 30
+    modal_y = 100
+    
+    # Draw modal background
+    pygame.draw.rect(screen, COLOR_BG, (modal_x, modal_y, modal_w, modal_h), border_radius=20)
+    pygame.draw.rect(screen, COLOR_ACCENT, (modal_x, modal_y, modal_w, modal_h), 3, border_radius=20)
+    
+    # Header
+    pygame.draw.rect(screen, COLOR_PANEL, (modal_x, modal_y, modal_w, 70), 
+                    border_top_left_radius=20, border_top_right_radius=20)
+    
+    # Avatar and title
+    avatar_font = pygame.font.SysFont("Arial", 40)
+    avatar_text = avatar_font.render("🦊", True, COLOR_TEXT)
+    screen.blit(avatar_text, (modal_x + 20, modal_y + 15))
+    
+    title_font = pygame.font.SysFont("Arial", 24, bold=True)
+    title_text = title_font.render(f"{chatbot.name} - Financial Assistant", True, COLOR_PRIMARY)
+    screen.blit(title_text, (modal_x + 80, modal_y + 25))
+    
+    # Conversation history area
+    history_rect = pygame.Rect(modal_x + 20, modal_y + 90, modal_w - 40, modal_h - 180)
+    pygame.draw.rect(screen, COLOR_PANEL, history_rect, border_radius=10)
+    
+    # Display last response
+    y_offset = modal_y + 110
+    font_small = pygame.font.SysFont("Arial", 16)
+    
+    # Bot message
+    bot_bubble = pygame.Rect(modal_x + 30, y_offset, modal_w - 100, 80)
+    pygame.draw.rect(screen, COLOR_PANEL_HOVER, bot_bubble, border_radius=15)
+    pygame.draw.rect(screen, COLOR_ACCENT, bot_bubble, 1, border_radius=15)
+    
+    # Word wrap for bot message
+    words = chatbot.last_response.split()
+    lines = []
+    current_line = []
+    for word in words:
+        current_line.append(word)
+        test_line = ' '.join(current_line)
+        if font_small.size(test_line)[0] > modal_w - 140:
+            current_line.pop()
+            lines.append(' '.join(current_line))
+            current_line = [word]
+    if current_line:
+        lines.append(' '.join(current_line))
+    
+    for i, line in enumerate(lines[:4]):  # Show max 4 lines
+        text = font_small.render(line, True, COLOR_TEXT)
+        screen.blit(text, (modal_x + 45, y_offset + 10 + i * 20))
+    
+    return modal_x, modal_y, modal_w, modal_h, history_rect
 
 class GameState(Enum):
     TITLE = 1
@@ -121,7 +316,7 @@ class Button:
         
         self._text_cache = {}
         self._cache_dirty = True
-        
+
     def _get_cached_text(self, font, color):
         cache_key = (self.text, id(font), color)
         if self._cache_dirty or cache_key not in self._text_cache:
@@ -357,6 +552,13 @@ class FinanceGame:
         self.show_custom_input = False
         self.custom_input_text = ""
         self.custom_input_type = ""
+
+        # AI Chatbot
+        self.show_chatbot = False
+        self.chatbot_input_text = ""
+        self.chatbot_input_active = False
+        self.chatbot = finance_chatbot
+        self.chatbot_has_new_message = False
         
     def _init_fonts(self):
         """Initialize all fonts with better typography"""
@@ -405,6 +607,31 @@ class FinanceGame:
         # Help scroll
         self.help_scroll_offset = 0
         self.help_max_scroll = 0
+
+    def _toggle_chatbot(self):
+        """Toggle the AI chatbot modal"""
+        self.show_chatbot = not self.show_chatbot
+        self.chatbot_input_active = False
+        if self.show_chatbot:
+            self.chatbot_has_new_message = False
+
+    def _send_chatbot_message(self):
+        """Send a message to the AI chatbot"""
+        if not self.chatbot_input_text.strip():
+            return
+        
+        question = self.chatbot_input_text
+        self.chatbot_input_text = ""
+        
+        # Get game context
+        context = self.chatbot.get_context_from_game(self)
+        
+        # Run in thread to avoid freezing UI
+        def ask_ai():
+            self.chatbot.ask(question, context)
+            self.chatbot_has_new_message = True
+        
+        threading.Thread(target=ask_ai, daemon=True).start()
     
     def _add_particle(self, x, y, color):
         """Add a particle effect"""
@@ -547,7 +774,7 @@ class FinanceGame:
         
         self.cached_buttons[GameState.TITLE][0].callback = lambda: setattr(self, 'state', GameState.TUTORIAL)
         self.cached_buttons[GameState.TITLE][1].callback = lambda: setattr(self, 'state', GameState.SETUP)
-        self.cached_buttons[GameState.TITLE][2].callback = self._toggle_help  # FIXED: Help button now works on homepage
+        self.cached_buttons[GameState.TITLE][2].callback = self._toggle_help
     
     def _init_tutorial_buttons(self):
         """Initialize tutorial screen buttons"""
@@ -608,7 +835,7 @@ class FinanceGame:
         if self.cached_buttons[GameState.PLAYING]:
             return
         
-        # Next Month button - will be positioned in _draw_playing_main
+        # Next Month button
         next_btn = Button(0, 0, 200, 80, "NEXT MONTH", 
                         COLOR_SUCCESS, text_color=COLOR_BG, button_id="next_month",
                         gradient=True)
@@ -621,12 +848,18 @@ class FinanceGame:
         help_btn.callback = self._toggle_help
         self.cached_buttons[GameState.PLAYING].append(help_btn)
         
+        # AI Chatbot button (top right, next to help)
+        chatbot_btn = Button(SCREEN_WIDTH - 230, 20, 100, 40, "ASK AI", COLOR_PRIMARY,
+                        text_color=COLOR_BG, button_id="chatbot", gradient=True, icon="🦊")
+        chatbot_btn.callback = self._toggle_chatbot
+        self.cached_buttons[GameState.PLAYING].append(chatbot_btn)
+        
     def _update_playing_buttons(self):
         """Update playing screen buttons based on current game state"""
         # Keep only the Next Month and Help buttons
         self.cached_buttons[GameState.PLAYING] = [
             btn for btn in self.cached_buttons[GameState.PLAYING] 
-            if btn.button_id in ["next_month", "help"]
+            if btn.button_id in ["next_month", "help", "chatbot"]
         ]
         
         # Create action buttons
@@ -788,7 +1021,7 @@ class FinanceGame:
                               SCREEN_HEIGHT - header_height - 100)
         
         for btn in self.cached_buttons[GameState.PLAYING]:
-            if btn.button_id not in ["next_month", "help"]:
+            if btn.button_id not in ["next_month", "help", "chatbot"]:
                 new_y = btn.original_y - self.scroll_offset
                 btn.rect.y = new_y
                 btn.visible = (new_y + btn.rect.height > view_rect.y and new_y < view_rect.bottom)
@@ -1451,7 +1684,7 @@ class FinanceGame:
             y += 130
 
     def _draw_playing(self, events):
-        """Draw main playing screen"""
+        """Draw main playing screen with AI chatbot"""
         self._draw_gradient_background()
         self._update_particles()
         self._draw_particles()
@@ -1471,6 +1704,78 @@ class FinanceGame:
         self._draw_playing_main(sidebar_w, main_area_w, header_height)
         self._draw_playing_actions(action_panel_w, header_height)
         
+        # Draw AI Chatbot icon in bottom left corner
+        draw_chatbot_icon(
+            self.screen, 
+            80, SCREEN_HEIGHT - 80, 
+            self.chatbot.is_thinking, 
+            self.chatbot_has_new_message
+        )
+        
+        # Draw chatbot modal if open
+        if self.show_chatbot:
+            modal_x, modal_y, modal_w, modal_h, history_rect = draw_chatbot_modal(
+                self.screen, self.font_medium, self.chatbot
+            )
+            
+            # Draw input box
+            input_rect = pygame.Rect(modal_x + 20, modal_y + modal_h - 80, modal_w - 100, 50)
+            pygame.draw.rect(self.screen, COLOR_PANEL, input_rect, border_radius=10)
+            pygame.draw.rect(self.screen, COLOR_PRIMARY, input_rect, 2, border_radius=10)
+            
+            # Draw send button
+            send_btn = Button(modal_x + modal_w - 70, modal_y + modal_h - 80, 50, 50, "→", 
+                            COLOR_SUCCESS, COLOR_BG, "send_chat", gradient=True)
+            
+            # Draw close button
+            close_btn = Button(modal_x + modal_w - 50, modal_y + 20, 30, 30, "✕", COLOR_DANGER, COLOR_TEXT, "close_chat")
+            
+            # Draw input text
+            if self.chatbot_input_active:
+                cursor = "|" if pygame.time.get_ticks() % 1000 < 500 else " "
+                display_text = self.chatbot_input_text + cursor
+            else:
+                display_text = self.chatbot_input_text if self.chatbot_input_text else "Ask for help..."
+            
+            text_surf = self.font_tiny.render(display_text, True, COLOR_TEXT)
+            self.screen.blit(text_surf, (input_rect.x + 10, input_rect.y + 15))
+            
+            # Draw buttons
+            close_btn.draw(self.screen, self.font_small)
+            send_btn.draw(self.screen, self.font_small)
+            
+            # Handle chatbot events
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if close_btn.rect.collidepoint(event.pos):
+                        self._toggle_chatbot()
+                    elif send_btn.rect.collidepoint(event.pos):
+                        self._send_chatbot_message()
+                    elif input_rect.collidepoint(event.pos):
+                        self.chatbot_input_active = True
+                    else:
+                        self.chatbot_input_active = False
+                
+                if event.type == pygame.KEYDOWN and self.chatbot_input_active:
+                    if event.key == pygame.K_RETURN:
+                        self._send_chatbot_message()
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.chatbot_input_text = self.chatbot_input_text[:-1]
+                    elif event.key == pygame.K_ESCAPE:
+                        self.chatbot_input_active = False
+                    else:
+                        if len(self.chatbot_input_text) < 50:
+                            self.chatbot_input_text += event.unicode
+        
+        # Handle chatbot icon click
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Check if chatbot icon clicked
+                icon_rect = pygame.Rect(50, SCREEN_HEIGHT - 110, 60, 60)
+                if icon_rect.collidepoint(event.pos):
+                    self._toggle_chatbot()
+        
+        # Handle other events
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
                 mouse_pos = event.pos
@@ -1486,11 +1791,11 @@ class FinanceGame:
                         break
             
             for btn in self.cached_buttons[GameState.PLAYING]:
-                if btn.button_id in ["next_month", "help"]:
+                if btn.button_id in ["next_month", "help", "chatbot"]:
                     btn.handle_event(event)
             
             for btn in self.cached_buttons[GameState.PLAYING]:
-                if btn.button_id not in ["next_month", "help"]:
+                if btn.button_id not in ["next_month", "help", "chatbot"]:
                     btn.handle_event(event)
         
         mouse_pos = pygame.mouse.get_pos()
@@ -1506,6 +1811,7 @@ class FinanceGame:
         
         net_worth = self.money + self.investments + self.emergency_fund - self.debt
         
+        # Avatar display
         pygame.draw.circle(self.screen, COLOR_PRIMARY, (90, 40), 25)
         pygame.draw.circle(self.screen, COLOR_ACCENT, (90, 40), 27, 2)
         self._draw_text(self.selected_avatar, self.font_large, COLOR_TEXT, 90, 40, center=True)
@@ -1514,8 +1820,8 @@ class FinanceGame:
         # MONTH
         self._draw_text("MONTH", self.font_tiny, COLOR_TEXT_DIM, 550, 15)
         month_color = COLOR_SUCCESS if self.current_month < MONTHS_PER_GAME * 0.5 else \
-                     COLOR_WARNING if self.current_month < MONTHS_PER_GAME * 0.8 else \
-                     COLOR_DANGER
+                    COLOR_WARNING if self.current_month < MONTHS_PER_GAME * 0.8 else \
+                    COLOR_DANGER
         self._draw_text(f"{self.current_month}/{MONTHS_PER_GAME}", self.font_medium, month_color, 550, 35)
         
         # CASH
@@ -1528,13 +1834,34 @@ class FinanceGame:
         worth_color = COLOR_PRIMARY if net_worth > 0 else COLOR_WARNING
         self._draw_text(f"${net_worth:,.0f}", self.font_medium, worth_color, 950, 35)
         
-        # Help button
+        # ============================================================
+        # HELP BUTTON - TOP RIGHT CORNER (ORIGINAL DESIGN)
+        # ============================================================
+        # Draw Help button at top right with ❓ icon
         for btn in self.cached_buttons[GameState.PLAYING]:
             if btn.button_id == "help":
                 btn.rect.x = SCREEN_WIDTH - 120
                 btn.rect.y = 20
                 btn.rect.width = 100
                 btn.rect.height = 40
+                btn.text = "HELP"
+                btn.icon = "❓"
+                btn.base_color = COLOR_ACCENT
+                btn.gradient = False
+                btn.draw(self.screen, self.font_small)
+                break
+        
+        # Draw Chatbot button at top right, next to Help button
+        for btn in self.cached_buttons[GameState.PLAYING]:
+            if btn.button_id == "chatbot":
+                btn.rect.x = SCREEN_WIDTH - 230
+                btn.rect.y = 20
+                btn.rect.width = 100
+                btn.rect.height = 40
+                btn.text = "ASK AI"
+                btn.icon = "🦊"
+                btn.base_color = COLOR_PRIMARY
+                btn.gradient = True
                 btn.draw(self.screen, self.font_small)
                 break
 
@@ -1761,7 +2088,7 @@ class FinanceGame:
         
         # Draw action buttons
         for btn in self.cached_buttons[GameState.PLAYING]:
-            if btn.button_id not in ["next_month", "help"]:
+            if btn.button_id not in ["next_month", "help", "chatbot"]:
                 btn.draw(self.screen, self.font_tiny)
         
         # Draw dropdown
@@ -1777,7 +2104,7 @@ class FinanceGame:
         
         # Draw tooltips
         for btn in self.cached_buttons[GameState.PLAYING]:
-            if btn.button_id not in ["next_month", "help"]:
+            if btn.button_id not in ["next_month", "help", "chatbot"]:
                 btn.draw_tooltip(self.screen, self.font_tiny)
 
     def _draw_help_panel(self, events):
@@ -1799,7 +2126,7 @@ class FinanceGame:
                     self.help_scroll_offset = max(0, min(self.help_scroll_offset, self.help_max_scroll))
         
         # Create a surface for the help content (for scrolling)
-        content_height = 800  # Taller than panel to enable scrolling
+        content_height = 800
         content_surface = pygame.Surface((panel_w - 40, content_height), pygame.SRCALPHA)
         content_surface.fill((0, 0, 0, 0))
         
@@ -1857,7 +2184,6 @@ class FinanceGame:
                 y += 35 + len(lines) * 25 + 15
         
         # Blit content surface onto screen with clipping
-        content_rect = pygame.Rect(panel_x + 20, panel_y + 100, panel_w - 40, panel_h - 150)
         self.screen.blit(content_surface, (panel_x + 20, panel_y + 100), 
                         area=(0, self.help_scroll_offset, panel_w - 40, panel_h - 150))
         
@@ -2034,6 +2360,7 @@ class FinanceGame:
                 return True
         
         return False
+    
     def _draw_custom_input_modal(self, events):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(200)
