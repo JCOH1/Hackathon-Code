@@ -13,7 +13,7 @@ import threading
 pygame.init()
 
 SCREEN_WIDTH = 1400
-SCREEN_HEIGHT = 900
+SCREEN_HEIGHT = 950
 FPS = 60
 
 COLOR_BG = (10, 15, 25)
@@ -29,7 +29,6 @@ COLOR_ACCENT = (180, 100, 255)
 COLOR_BORDER = (60, 80, 100)
 COLOR_GRADIENT_START = (0, 150, 255)
 COLOR_GRADIENT_END = (100, 50, 200)
-
 MONTHS_PER_GAME = 24
 STARTING_HAPPINESS = 50
 BURNOUT_STRESS = 100
@@ -37,7 +36,7 @@ BURNOUT_HAPPINESS = 10
 ACTIONS_PER_MONTH = 3
 
 # ============================================================
-# AVATAR OPTIONS
+# AVATAR OPTIONS (preset quick picks)
 # ============================================================
 AVATARS = [
     {"emoji": "👨‍💼", "label": "Executive"},
@@ -54,6 +53,82 @@ AVATARS = [
     {"emoji": "🐉",   "label": "Dragon"},
 ]
 
+# ============================================================
+# CUSTOM AVATAR BUILDER DATA
+# ============================================================
+
+AVATAR_FACES = [
+    ("😊", "Happy"),
+    ("😎", "Cool"),
+    ("🤩", "Star"),
+    ("🥸", "Nerd"),
+    ("😤", "Fierce"),
+    ("😏", "Smirk"),
+    ("🤓", "Geek"),
+    ("😈", "Devil"),
+]
+
+# Format: (Emoji, Label, (X_Offset_Percent, Y_Offset_Percent))
+# Negative Y moves UP.
+AVATAR_ACCESSORIES = [
+    ("", "None", (0, 0)),
+    ("👑", "Crown", (0, -0.45)),
+    ("🎩", "Top Hat", (0, -0.45)),
+    ("🧢", "Cap", (0, -0.35)),
+    ("👓", "Glasses", (0, 0)),
+    ("🕶️", "Shades", (0, 0)),
+    ("😷", "Mask", (0, 0)),
+    ("🧔", "Beard", (0, 0)),
+    ("🤑", "Money Eye", (0, -0.1)),
+    ("🎓", "Grad Cap", (0.05, -0.45)),
+    ("🎧", "Headphones", (0, -0.05)),
+    ("⚔️", "Warrior", (0.4, -0.4)),
+]
+
+AVATAR_BG_COLORS = [
+    ((0, 200, 255),   "Cyan"),
+    ((180, 100, 255), "Purple"),
+    ((0, 255, 150),   "Green"),
+    ((255, 200, 50),  "Gold"),
+    ((255, 80, 80),   "Red"),
+    ((255, 150, 0),   "Orange"),
+    ((100, 180, 255), "Blue"),
+    ((255, 100, 200), "Pink"),
+    ((150, 255, 100), "Lime"),
+    ((200, 200, 200), "Silver"),
+]
+
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def draw_composite_avatar(screen, face_emoji, acc_data, x, y, font_size):
+    """
+    Draws the face, then draws the accessory on top based on offset data.
+    acc_data is the tuple: (Emoji, Label, (off_x, off_y))
+    x, y are the center coordinates.
+    """
+    # 1. Setup Fonts
+    font = pygame.font.SysFont("Segoe UI Emoji", int(font_size))
+    
+    # 2. Draw Face (Centered at x, y)
+    face_surf = font.render(face_emoji, True, COLOR_TEXT)
+    face_rect = face_surf.get_rect(center=(x, y))
+    screen.blit(face_surf, face_rect)
+
+    # 3. Draw Accessory (if exists and not empty string)
+    if acc_data and acc_data[0]:
+        acc_emoji, _, offsets = acc_data
+        off_x_pct, off_y_pct = offsets
+        
+        # Calculate pixel offset based on font size
+        # Note: offsets are percentage of font size relative to center
+        pixel_x = x + (font_size * off_x_pct)
+        pixel_y = y + (font_size * off_y_pct)
+        
+        acc_surf = font.render(acc_emoji, True, COLOR_TEXT)
+        acc_rect = acc_surf.get_rect(center=(pixel_x, pixel_y))
+        screen.blit(acc_surf, acc_rect)
 
 class SimpleHintBot:
     def __init__(self):
@@ -409,12 +484,46 @@ class Button:
             self._cache_dirty = True
 
 
+# ============================================================
+# CUSTOM AVATAR CREATOR STATE
+# ============================================================
+
+class CustomAvatarCreator:
+    """Holds state for the custom avatar builder modal."""
+    def __init__(self):
+        self.visible = False
+        self.selected_face_idx = 0
+        self.selected_acc_idx = 0
+        self.selected_bg_idx = 0
+        # Custom single-emoji override (user types it in)
+        self.custom_emoji_text = ""
+        self.custom_emoji_input_active = False
+        # Which tab: 'builder' or 'quick'
+        self.tab = 'builder'
+
+    def get_avatar_composition(self):
+        """Return the tuple components: (FaceString, AccessoryDataTuple)"""
+        if self.custom_emoji_text.strip():
+            # If typing custom, no accessory
+            return (self.custom_emoji_text.strip(), AVATAR_ACCESSORIES[0])
+        
+        face = AVATAR_FACES[self.selected_face_idx][0]
+        acc_data = AVATAR_ACCESSORIES[self.selected_acc_idx]
+        return (face, acc_data)
+
+    def get_bg_color(self):
+        return AVATAR_BG_COLORS[self.selected_bg_idx][0]
+
+    def reset_custom(self):
+        self.custom_emoji_text = ""
+        self.custom_emoji_input_active = False
+
+
 class FinanceGame:
     def __init__(self):
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("FinanceQuest - Master Your Financial Future")
         self.clock = pygame.time.Clock()
-        pygame.display.set_icon(self.screen)
         pygame.event.set_allowed([pygame.QUIT, pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION,
                                    pygame.MOUSEWHEEL, pygame.KEYDOWN])
         self._init_fonts()
@@ -423,7 +532,7 @@ class FinanceGame:
         self.selected_class = None
         self.selected_education = None
         self.selected_difficulty = None
-        self.selected_avatar_index = 0      # NEW: tracks chosen avatar
+        self.selected_avatar_index = 0
         self.particles = []
         self._init_player_stats()
         self.debuffs = []
@@ -458,6 +567,8 @@ class FinanceGame:
         self.chatbot_input_active = False
         self.chatbot = finance_chatbot
         self.chatbot_has_new_message = False
+        # Custom avatar creator
+        self.avatar_creator = CustomAvatarCreator()
 
     def _init_fonts(self):
         self.font_xl = pygame.font.SysFont("Arial Black", 72, bold=True)
@@ -468,6 +579,8 @@ class FinanceGame:
         self.font_digital = pygame.font.SysFont("Courier New", 32, bold=True)
         self.font_emoji_large = pygame.font.SysFont("Segoe UI Emoji", 30)
         self.font_emoji_header = pygame.font.SysFont("Segoe UI Emoji", 28)
+        self.font_emoji_xl = pygame.font.SysFont("Segoe UI Emoji", 52)
+        self.font_emoji_med = pygame.font.SysFont("Segoe UI Emoji", 26)
 
     def _init_player_stats(self):
         self.money = 0.0
@@ -487,6 +600,8 @@ class FinanceGame:
         self.show_help_panel = False
         self.current_tooltip = ""
         self.selected_avatar = AVATARS[0]["emoji"]
+        self.selected_avatar_acc = AVATAR_ACCESSORIES[0]
+        self.selected_avatar_bg = AVATAR_BG_COLORS[0][0]
         self.active_dropdown = None
         self.dropdown_hover = False
         self.dropdown_last_hover_time = 0
@@ -804,8 +919,13 @@ class FinanceGame:
         self.has_university = self.selected_education in ['university', 'masters']
         self.has_masters = self.selected_education == 'masters'
         self.game_message = "Welcome to your financial journey! Good luck."
-        # Use the player's chosen avatar
-        self.selected_avatar = AVATARS[self.selected_avatar_index]["emoji"]
+        
+        # Use the custom avatar creator result
+        face, acc_data = self.avatar_creator.get_avatar_composition()
+        self.selected_avatar = face
+        self.selected_avatar_acc = acc_data
+        self.selected_avatar_bg = self.avatar_creator.get_bg_color()
+        
         self.actions_taken_this_month = 0
         self.actions_remaining = ACTIONS_PER_MONTH
         self.locked_action = None
@@ -1160,6 +1280,362 @@ class FinanceGame:
         return lines
 
     # -----------------------------------------------------------------------
+    # AVATAR CREATOR MODAL
+    # -----------------------------------------------------------------------
+
+    def _draw_avatar_creator_modal(self, events):
+        """Full custom avatar creator modal with face, accessories, bg color, and custom emoji input."""
+        ac = self.avatar_creator
+
+        # Semi-transparent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        self.screen.blit(overlay, (0, 0))
+
+        # Modal dimensions
+        mw, mh = 820, 700
+        mx = (SCREEN_WIDTH - mw) // 2
+        my = (SCREEN_HEIGHT - mh) // 2
+
+        # Modal background
+        pygame.draw.rect(self.screen, (12, 20, 35), (mx, my, mw, mh), border_radius=24)
+        pygame.draw.rect(self.screen, COLOR_ACCENT, (mx, my, mw, mh), 3, border_radius=24)
+
+        # Header bar
+        pygame.draw.rect(self.screen, COLOR_PANEL, (mx, my, mw, 64), border_top_left_radius=24, border_top_right_radius=24)
+        self._draw_text("✨ CUSTOM AVATAR CREATOR", self.font_medium, COLOR_ACCENT, mx + mw // 2, my + 32, center=True, glow=True)
+
+        # Tab buttons
+        tab_y = my + 76
+        for i, (tab_id, tab_label) in enumerate([('builder', '🎨 Build Your Own'), ('quick', '⚡ Quick Pick')]):
+            tx = mx + 30 + i * 390
+            tab_rect = pygame.Rect(tx, tab_y, 370, 40)
+            is_active = ac.tab == tab_id
+            bg = COLOR_ACCENT if is_active else COLOR_PANEL_HOVER
+            pygame.draw.rect(self.screen, bg, tab_rect, border_radius=10)
+            pygame.draw.rect(self.screen, COLOR_ACCENT if is_active else COLOR_BORDER, tab_rect, 2, border_radius=10)
+            lf = pygame.font.SysFont("Arial", 17, bold=True)
+            ls = lf.render(tab_label, True, COLOR_BG if is_active else COLOR_TEXT)
+            self.screen.blit(ls, ls.get_rect(center=tab_rect.center))
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if tab_rect.collidepoint(event.pos):
+                        ac.tab = tab_id
+                        ac.reset_custom()
+
+        content_y = tab_y + 52
+        mouse_pos = pygame.mouse.get_pos()
+
+        if ac.tab == 'builder':
+            self._draw_avatar_builder_tab(mx, my, mw, mh, content_y, ac, events, mouse_pos)
+        else:
+            self._draw_avatar_quickpick_tab(mx, my, mw, mh, content_y, ac, events, mouse_pos)
+
+        # --- Live Preview (always visible, right side) ---
+        prev_x = mx + mw - 185
+        prev_y = content_y + 10
+        prev_w, prev_h = 165, 190
+
+        pygame.draw.rect(self.screen, COLOR_PANEL, (prev_x, prev_y, prev_w, prev_h), border_radius=18)
+        bg_col = ac.get_bg_color()
+        pygame.draw.rect(self.screen, bg_col, (prev_x + 4, prev_y + 4, prev_w - 8, prev_h - 8), border_radius=14)
+
+        # Big emoji preview using composite draw
+        face, acc_data = ac.get_avatar_composition()
+        draw_composite_avatar(self.screen, face, acc_data, prev_x + prev_w // 2, prev_y + 80, 64)
+
+        lf2 = pygame.font.SysFont("Arial", 13, bold=True)
+        self.screen.blit(lf2.render("PREVIEW", True, COLOR_TEXT_DIM), 
+                         lf2.render("PREVIEW", True, COLOR_TEXT_DIM).get_rect(center=(prev_x + prev_w // 2, prev_y + prev_h - 18)))
+        pygame.draw.rect(self.screen, COLOR_ACCENT, (prev_x, prev_y, prev_w, prev_h), 2, border_radius=18)
+
+        # --- Confirm / Cancel ---
+        btn_y = my + mh - 68
+        confirm_rect = pygame.Rect(mx + mw // 2 - 230, btn_y, 210, 48)
+        cancel_rect  = pygame.Rect(mx + mw // 2 + 20,  btn_y, 210, 48)
+        c_hov = confirm_rect.collidepoint(mouse_pos)
+        x_hov = cancel_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(self.screen, (COLOR_SUCCESS if not c_hov else (50, 255, 180)), confirm_rect, border_radius=12)
+        pygame.draw.rect(self.screen, COLOR_PANEL_HOVER if not x_hov else (60, 70, 90), cancel_rect, border_radius=12)
+        pygame.draw.rect(self.screen, COLOR_SUCCESS, confirm_rect, 2, border_radius=12)
+        pygame.draw.rect(self.screen, COLOR_BORDER, cancel_rect, 2, border_radius=12)
+        cf = pygame.font.SysFont("Arial", 18, bold=True)
+        self.screen.blit(cf.render("✓  Use This Avatar", True, COLOR_BG), cf.render("✓  Use This Avatar", True, COLOR_BG).get_rect(center=confirm_rect.center))
+        self.screen.blit(cf.render("✗  Cancel", True, COLOR_TEXT), cf.render("✗  Cancel", True, COLOR_TEXT).get_rect(center=cancel_rect.center))
+
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if confirm_rect.collidepoint(event.pos):
+                    # Commit avatar choice - no further changes needed, creator state is already up to date
+                    ac.visible = False
+                    self._add_particle(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, COLOR_ACCENT)
+                elif cancel_rect.collidepoint(event.pos):
+                    ac.visible = False
+
+    def _draw_avatar_builder_tab(self, mx, my, mw, mh, content_y, ac, events, mouse_pos):
+        """Builder tab: pick face, accessories, bg color, or type custom emoji."""
+        left_w = mw - 200  # leaves room for preview on right
+        section_x = mx + 20
+
+        row_y = content_y + 5
+
+        # ---- Face row ----
+        self._draw_text("FACE", self.font_tiny, COLOR_ACCENT, section_x, row_y)
+        row_y += 24
+        tile = 54
+        gap  = 8
+        for i, (em, label) in enumerate(AVATAR_FACES):
+            cols = 10
+            col = i % cols
+            r   = i // cols
+            tx = section_x + col * (tile + gap)
+            ty = row_y + r * (tile + gap)
+            tr = pygame.Rect(tx, ty, tile, tile)
+            is_sel = (i == ac.selected_face_idx) and not ac.custom_emoji_text
+            is_hov = tr.collidepoint(mouse_pos)
+            if is_sel:
+                halo = pygame.Surface((tile + 8, tile + 8), pygame.SRCALPHA)
+                pygame.draw.rect(halo, (*COLOR_PRIMARY, 60), (0, 0, tile + 8, tile + 8), border_radius=12)
+                self.screen.blit(halo, (tx - 4, ty - 4))
+                pygame.draw.rect(self.screen, COLOR_PRIMARY, tr, border_radius=10)
+            elif is_hov:
+                pygame.draw.rect(self.screen, COLOR_PANEL_HOVER, tr, border_radius=10)
+            else:
+                pygame.draw.rect(self.screen, (25, 38, 58), tr, border_radius=10)
+            pygame.draw.rect(self.screen, (COLOR_PRIMARY if is_sel else (COLOR_ACCENT if is_hov else COLOR_BORDER)), tr, 2, border_radius=10)
+            ef = pygame.font.SysFont("Segoe UI Emoji", 26)
+            es = ef.render(em, True, COLOR_TEXT)
+            self.screen.blit(es, es.get_rect(center=tr.center))
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and tr.collidepoint(event.pos):
+                    ac.selected_face_idx = i
+                    ac.custom_emoji_text = ""
+        rows_face = (len(AVATAR_FACES) + 9) // 10
+        row_y += rows_face * (tile + gap) + 14
+
+        # ---- Accessory row ----
+        self._draw_text("ACCESSORY / OVERLAY", self.font_tiny, COLOR_ACCENT, section_x, row_y)
+        row_y += 24
+        for i, (em, label, _) in enumerate(AVATAR_ACCESSORIES):
+            cols = 10
+            col = i % cols
+            r   = i // cols
+            tx = section_x + col * (tile + gap)
+            ty = row_y + r * (tile + gap)
+            tr = pygame.Rect(tx, ty, tile, tile)
+            is_sel = (i == ac.selected_acc_idx) and not ac.custom_emoji_text
+            is_hov = tr.collidepoint(mouse_pos)
+            if is_sel:
+                pygame.draw.rect(self.screen, COLOR_ACCENT, tr, border_radius=10)
+            elif is_hov:
+                pygame.draw.rect(self.screen, COLOR_PANEL_HOVER, tr, border_radius=10)
+            else:
+                pygame.draw.rect(self.screen, (25, 38, 58), tr, border_radius=10)
+            pygame.draw.rect(self.screen, (COLOR_ACCENT if is_sel else (COLOR_PRIMARY if is_hov else COLOR_BORDER)), tr, 2, border_radius=10)
+            ef = pygame.font.SysFont("Segoe UI Emoji", 26)
+            disp = em if em else "∅"
+            es = ef.render(disp, True, COLOR_TEXT)
+            self.screen.blit(es, es.get_rect(center=tr.center))
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and tr.collidepoint(event.pos):
+                    ac.selected_acc_idx = i
+                    ac.custom_emoji_text = ""
+        rows_acc = (len(AVATAR_ACCESSORIES) + 9) // 10
+        row_y += rows_acc * (tile + gap) + 14
+
+        # ---- Background colour row ----
+        self._draw_text("AVATAR BACKGROUND COLOR", self.font_tiny, COLOR_ACCENT, section_x, row_y)
+        row_y += 24
+        swatch = 36
+        for i, (col, name) in enumerate(AVATAR_BG_COLORS):
+            sx = section_x + i * (swatch + 6)
+            sr = pygame.Rect(sx, row_y, swatch, swatch)
+            is_sel = (i == ac.selected_bg_idx)
+            pygame.draw.rect(self.screen, col, sr, border_radius=8)
+            if is_sel:
+                pygame.draw.rect(self.screen, COLOR_TEXT, sr, 3, border_radius=8)
+                pygame.draw.circle(self.screen, COLOR_TEXT, sr.center, 5)
+            elif sr.collidepoint(mouse_pos):
+                pygame.draw.rect(self.screen, COLOR_TEXT, sr, 2, border_radius=8)
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and sr.collidepoint(event.pos):
+                    ac.selected_bg_idx = i
+        row_y += swatch + 20
+
+        # ---- Custom emoji override ----
+        self._draw_text("OR TYPE YOUR OWN EMOJI (overrides selections above):", self.font_tiny, COLOR_WARNING, section_x, row_y)
+        row_y += 24
+        input_rect = pygame.Rect(section_x, row_y, 260, 44)
+        is_active = ac.custom_emoji_input_active
+        pygame.draw.rect(self.screen, COLOR_PANEL, input_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (COLOR_WARNING if is_active else COLOR_BORDER), input_rect, 2, border_radius=10)
+        disp_text = ac.custom_emoji_text if ac.custom_emoji_text else "e.g. 🦄 or 🤖"
+        cursor = "|" if (is_active and pygame.time.get_ticks() % 1000 < 500) else " "
+        txt_col = COLOR_TEXT if ac.custom_emoji_text else COLOR_TEXT_DIM
+        ef2 = pygame.font.SysFont("Segoe UI Emoji", 22)
+        rendered = ef2.render((ac.custom_emoji_text + cursor) if is_active else disp_text, True, txt_col)
+        self.screen.blit(rendered, (input_rect.x + 10, input_rect.y + 10))
+        # clear button
+        clr_rect = pygame.Rect(input_rect.right + 10, row_y + 4, 70, 36)
+        clr_hov = clr_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(self.screen, (COLOR_DANGER if clr_hov else COLOR_PANEL_HOVER), clr_rect, border_radius=8)
+        pygame.draw.rect(self.screen, COLOR_DANGER, clr_rect, 1, border_radius=8)
+        cf2 = pygame.font.SysFont("Arial", 14, bold=True)
+        self.screen.blit(cf2.render("Clear", True, COLOR_TEXT), cf2.render("Clear", True, COLOR_TEXT).get_rect(center=clr_rect.center))
+
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if input_rect.collidepoint(event.pos):
+                    ac.custom_emoji_input_active = True
+                elif clr_rect.collidepoint(event.pos):
+                    ac.custom_emoji_text = ""
+                    ac.custom_emoji_input_active = False
+                else:
+                    ac.custom_emoji_input_active = False
+            if event.type == pygame.KEYDOWN and ac.custom_emoji_input_active:
+                if event.key == pygame.K_BACKSPACE:
+                    # Handle multi-byte emoji deletion properly
+                    if ac.custom_emoji_text:
+                        ac.custom_emoji_text = ac.custom_emoji_text[:-1]
+                elif event.key == pygame.K_ESCAPE:
+                    ac.custom_emoji_input_active = False
+                elif event.key == pygame.K_RETURN:
+                    ac.custom_emoji_input_active = False
+                else:
+                    # Allow any unicode character (emoji, letters)
+                    if len(ac.custom_emoji_text) < 6:
+                        ac.custom_emoji_text += event.unicode
+
+    def _draw_avatar_quickpick_tab(self, mx, my, mw, mh, content_y, ac, events, mouse_pos):
+        """Quick pick tab: the original 12 preset avatars."""
+        section_x = mx + 20
+        tile_size = 72
+        tile_gap  = 14
+        num = len(AVATARS)
+        cols = 6
+        start_y = content_y + 18
+
+        self._draw_text("CHOOSE A PRESET AVATAR", self.font_small, COLOR_ACCENT, section_x + 10, start_y - 8)
+
+        for i, av in enumerate(AVATARS):
+            col = i % cols
+            row = i // cols
+            tx = section_x + col * (tile_size + tile_gap)
+            ty = start_y + 30 + row * (tile_size + tile_gap + 20)
+            tile_rect = pygame.Rect(tx, ty, tile_size, tile_size)
+            # Use quick_pick_idx to track selection within this tab
+            is_selected = (ac.tab == 'quick' and ac.selected_face_idx == i and not ac.custom_emoji_text)
+            is_hovered  = tile_rect.collidepoint(mouse_pos)
+
+            if is_selected:
+                halo = pygame.Surface((tile_size + 12, tile_size + 12), pygame.SRCALPHA)
+                pygame.draw.rect(halo, (*COLOR_PRIMARY, 55), (0, 0, tile_size + 12, tile_size + 12), border_radius=14)
+                self.screen.blit(halo, (tx - 6, ty - 6))
+                pygame.draw.rect(self.screen, COLOR_PRIMARY, tile_rect, border_radius=12)
+            elif is_hovered:
+                pygame.draw.rect(self.screen, COLOR_PANEL_HOVER, tile_rect, border_radius=12)
+            else:
+                pygame.draw.rect(self.screen, (28, 42, 62), tile_rect, border_radius=12)
+
+            border_col = COLOR_PRIMARY if is_selected else (COLOR_ACCENT if is_hovered else COLOR_BORDER)
+            pygame.draw.rect(self.screen, border_col, tile_rect, 2 if not is_selected else 3, border_radius=12)
+
+            ef = pygame.font.SysFont("Segoe UI Emoji", 34)
+            es = ef.render(av["emoji"], True, COLOR_TEXT)
+            self.screen.blit(es, es.get_rect(center=(tx + tile_size // 2, ty + tile_size // 2 - 8)))
+
+            lf = pygame.font.SysFont("Arial", 11, bold=True)
+            ls = lf.render(av["label"], True, COLOR_BG if is_selected else COLOR_TEXT_DIM)
+            self.screen.blit(ls, ls.get_rect(center=(tx + tile_size // 2, ty + tile_size - 10)))
+
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if tile_rect.collidepoint(event.pos):
+                        # In quick pick tab, store the preset emoji directly
+                        ac.custom_emoji_text = av["emoji"]
+                        ac.selected_face_idx = i
+                        self._add_particle(tx + tile_size // 2, ty + tile_size // 2, COLOR_ACCENT)
+
+    # -----------------------------------------------------------------------
+    # SETUP SCREEN - now includes avatar button instead of old strip
+    # -----------------------------------------------------------------------
+
+    def _draw_setup(self, events):
+        self._draw_gradient_background()
+        self._draw_text("⚡ CHARACTER SETUP", self.font_large, COLOR_PRIMARY, SCREEN_WIDTH//2, 40, center=True, glow=True)
+
+        section_width = 380
+        gap = 35
+        top_row_total = 3 * section_width + 2 * gap
+        start_x = (SCREEN_WIDTH - top_row_total) // 2
+        self._draw_class_selection(start_x, section_width, events)
+        self._draw_education_selection(start_x + section_width + gap, section_width, events)
+        self._draw_difficulty_selection(start_x + (section_width + gap) * 2, section_width, events)
+
+        # New avatar row (button to open creator + live mini-preview)
+        self._draw_avatar_row(events)
+
+        self.cached_buttons[GameState.SETUP][0].enabled = all(
+            [self.selected_class, self.selected_education, self.selected_difficulty])
+        for btn in self.cached_buttons[GameState.SETUP]:
+            font = self.font_small if btn.button_id == "setup_back" else self.font_medium
+            btn.draw(self.screen, font)
+        for event in events:
+            for btn in self.cached_buttons[GameState.SETUP]:
+                btn.handle_event(event)
+
+    def _draw_avatar_row(self, events):
+        """Compact row: mini preview + 'Customise Avatar' button."""
+        row_y   = 680
+        panel_x = 60
+        panel_w = SCREEN_WIDTH - 120
+        panel_h = 120
+
+        pygame.draw.rect(self.screen, COLOR_PANEL, (panel_x, row_y, panel_w, panel_h), border_radius=16)
+        pygame.draw.rect(self.screen, COLOR_ACCENT, (panel_x, row_y, panel_w, panel_h), 2, border_radius=16)
+
+        self._draw_text("YOUR AVATAR", self.font_small, COLOR_ACCENT, panel_x + 22, row_y + 14)
+
+        # Mini preview circle
+        face, acc_data = self.avatar_creator.get_avatar_composition()
+        bg_col = self.avatar_creator.get_bg_color()
+        cx, cy = panel_x + 58, row_y + 75
+        pygame.draw.circle(self.screen, bg_col, (cx, cy), 35)
+        pygame.draw.circle(self.screen, COLOR_ACCENT, (cx, cy), 37, 2)
+        
+        draw_composite_avatar(self.screen, face, acc_data, cx, cy, 36)
+
+        # Description text
+        desc_f = pygame.font.SysFont("Arial", 15)
+        desc_s = desc_f.render(f"Click 'Customise Avatar' to personalise your character", True, COLOR_TEXT_DIM)
+        self.screen.blit(desc_s, (panel_x + 115, row_y + 60))
+
+        # Customise button
+        btn_rect = pygame.Rect(panel_x + panel_w - 250, row_y + 22, 230, 56)
+        mouse_pos = pygame.mouse.get_pos()
+        is_hov = btn_rect.collidepoint(mouse_pos)
+        # gradient fill
+        for i in range(btn_rect.height):
+            ratio = i / btn_rect.height
+            c = (
+                int(COLOR_GRADIENT_START[0] * (1-ratio) + COLOR_GRADIENT_END[0] * ratio),
+                int(COLOR_GRADIENT_START[1] * (1-ratio) + COLOR_GRADIENT_END[1] * ratio),
+                int(COLOR_GRADIENT_START[2] * (1-ratio) + COLOR_GRADIENT_END[2] * ratio),
+            )
+            if is_hov:
+                c = (min(c[0]+40, 255), min(c[1]+40, 255), min(c[2]+40, 255))
+            pygame.draw.line(self.screen, c, (btn_rect.x, btn_rect.y + i), (btn_rect.right, btn_rect.y + i))
+        pygame.draw.rect(self.screen, COLOR_PRIMARY if is_hov else COLOR_ACCENT, btn_rect, 2, border_radius=12)
+        bf = pygame.font.SysFont("Arial", 18, bold=True)
+        bs = bf.render("✏️  Customise Avatar", True, COLOR_BG)
+        self.screen.blit(bs, bs.get_rect(center=btn_rect.center))
+
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_rect.collidepoint(event.pos):
+                    self.avatar_creator.visible = True
+
+    # -----------------------------------------------------------------------
     # SCREEN DRAW METHODS
     # -----------------------------------------------------------------------
 
@@ -1210,110 +1686,6 @@ class FinanceGame:
         for event in events:
             for btn in self.cached_buttons[GameState.TUTORIAL]:
                 btn.handle_event(event)
-
-    def _draw_setup(self, events):
-        """Setup screen: class | education | difficulty + avatar picker row."""
-        self._draw_gradient_background()
-        self._draw_text("⚡ CHARACTER SETUP", self.font_large, COLOR_PRIMARY, SCREEN_WIDTH//2, 40, center=True, glow=True)
-
-        # Three columns top
-        section_width = 380
-        gap = 35
-        top_row_total = 3 * section_width + 2 * gap
-        start_x = (SCREEN_WIDTH - top_row_total) // 2
-        self._draw_class_selection(start_x, section_width, events)
-        self._draw_education_selection(start_x + section_width + gap, section_width, events)
-        self._draw_difficulty_selection(start_x + (section_width + gap) * 2, section_width, events)
-
-        # Avatar picker below
-        self._draw_avatar_selection(events)
-
-        # Buttons
-        self.cached_buttons[GameState.SETUP][0].enabled = all(
-            [self.selected_class, self.selected_education, self.selected_difficulty])
-        for btn in self.cached_buttons[GameState.SETUP]:
-            font = self.font_small if btn.button_id == "setup_back" else self.font_medium
-            btn.draw(self.screen, font)
-        for event in events:
-            for btn in self.cached_buttons[GameState.SETUP]:
-                btn.handle_event(event)
-
-    def _draw_avatar_selection(self, events):
-        """Full-width avatar selection strip between the 3-column selectors and the Start button."""
-        section_y = 680
-        panel_x = 60
-        panel_w = SCREEN_WIDTH - 120
-        panel_h = 120
-
-        # Panel background
-        pygame.draw.rect(self.screen, COLOR_PANEL, (panel_x, section_y, panel_w, panel_h), border_radius=16)
-        pygame.draw.rect(self.screen, COLOR_ACCENT, (panel_x, section_y, panel_w, panel_h), 2, border_radius=16)
-
-        # Title
-        self._draw_text("CHOOSE YOUR AVATAR", self.font_small, COLOR_ACCENT, panel_x + 20, section_y + 12)
-
-        # Tiles
-        num = len(AVATARS)
-        tile_size = 68
-        tile_gap = 10
-        tiles_total_w = num * tile_size + (num - 1) * tile_gap
-        # leave room on the right for the preview (≈130px)
-        tile_start_x = panel_x + 20
-        tile_y = section_y + 38
-
-        mouse_pos = pygame.mouse.get_pos()
-
-        for i, av in enumerate(AVATARS):
-            tx = tile_start_x + i * (tile_size + tile_gap)
-            tile_rect = pygame.Rect(tx, tile_y, tile_size, tile_size)
-            is_selected = (i == self.selected_avatar_index)
-            is_hovered = tile_rect.collidepoint(mouse_pos)
-
-            # Background
-            if is_selected:
-                # Soft glow halo
-                halo = pygame.Surface((tile_size + 12, tile_size + 12), pygame.SRCALPHA)
-                pygame.draw.rect(halo, (*COLOR_PRIMARY, 55), (0, 0, tile_size+12, tile_size+12), border_radius=14)
-                self.screen.blit(halo, (tx - 6, tile_y - 6))
-                pygame.draw.rect(self.screen, COLOR_PRIMARY, tile_rect, border_radius=12)
-                border_col, border_w = COLOR_PRIMARY, 3
-            elif is_hovered:
-                pygame.draw.rect(self.screen, COLOR_PANEL_HOVER, tile_rect, border_radius=12)
-                border_col, border_w = COLOR_ACCENT, 2
-            else:
-                pygame.draw.rect(self.screen, (28, 42, 62), tile_rect, border_radius=12)
-                border_col, border_w = COLOR_BORDER, 1
-
-            pygame.draw.rect(self.screen, border_col, tile_rect, border_w, border_radius=12)
-
-            # Emoji
-            es = self.font_emoji_large.render(av["emoji"], True, COLOR_TEXT)
-            self.screen.blit(es, es.get_rect(center=(tx + tile_size//2, tile_y + tile_size//2 - 6)))
-
-            # Label
-            lf = pygame.font.SysFont("Arial", 10)
-            ls = lf.render(av["label"], True, COLOR_BG if is_selected else COLOR_TEXT_DIM)
-            self.screen.blit(ls, ls.get_rect(center=(tx + tile_size//2, tile_y + tile_size - 10)))
-
-            # Click
-            for event in events:
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if tile_rect.collidepoint(event.pos):
-                        self.selected_avatar_index = i
-                        self._add_particle(tx + tile_size//2, tile_y + tile_size//2, COLOR_ACCENT)
-
-        # Live preview on the right side of the panel
-        preview_x = panel_x + panel_w - 110
-        preview_emoji = AVATARS[self.selected_avatar_index]["emoji"]
-        preview_label = AVATARS[self.selected_avatar_index]["label"]
-
-        pf = pygame.font.SysFont("Segoe UI Emoji", 42)
-        ps = pf.render(preview_emoji, True, COLOR_TEXT)
-        self.screen.blit(ps, ps.get_rect(center=(preview_x + 40, section_y + 52)))
-
-        plf = pygame.font.SysFont("Arial", 13, bold=True)
-        pls = plf.render(preview_label, True, COLOR_ACCENT)
-        self.screen.blit(pls, pls.get_rect(center=(preview_x + 40, section_y + 95)))
 
     def _draw_class_selection(self, x, width, events):
         y = 90
@@ -1433,11 +1805,14 @@ class FinanceGame:
         pygame.draw.line(self.screen, COLOR_BORDER, (0, header_height), (SCREEN_WIDTH, header_height), 1)
         nw = self.money + self.investments + self.emergency_fund - self.debt
 
-        # Avatar bubble (uses chosen emoji)
-        pygame.draw.circle(self.screen, COLOR_PRIMARY, (90, 40), 25)
+        # Avatar bubble with custom bg color
+        bg_col = getattr(self, 'selected_avatar_bg', COLOR_PRIMARY)
+        pygame.draw.circle(self.screen, bg_col, (90, 40), 25)
         pygame.draw.circle(self.screen, COLOR_ACCENT, (90, 40), 27, 2)
-        as_ = self.font_emoji_header.render(self.selected_avatar, True, COLOR_TEXT)
-        self.screen.blit(as_, as_.get_rect(center=(90, 40)))
+        
+        # Check if we have accessory data (might be missing if loaded from old save/default)
+        acc_data = getattr(self, 'selected_avatar_acc', AVATAR_ACCESSORIES[0])
+        draw_composite_avatar(self.screen, self.selected_avatar, acc_data, 90, 40, 28)
 
         self._draw_text("FINANCE QUEST", self.font_large, COLOR_PRIMARY, 150, 15)
         self._draw_text("MONTH", self.font_tiny, COLOR_TEXT_DIM, 550, 15)
@@ -1520,14 +1895,12 @@ class FinanceGame:
         for line in self.game_message.split('|')[:2]:
             self._draw_text(line.strip(), self.font_small, COLOR_TEXT, mx+20, ly); ly += 35
         controls_y = msg_y + 120
-        # Actions counter
         pygame.draw.rect(self.screen, COLOR_PANEL, (mx, controls_y, 160, 90), border_radius=15)
         pygame.draw.rect(self.screen, COLOR_BORDER, (mx, controls_y, 160, 90), 2, border_radius=15)
         self._draw_text("ACTIONS LEFT", self.font_tiny, COLOR_TEXT_DIM, mx+80, controls_y+15, center=True)
         ac = {3: (COLOR_SUCCESS, "FULL"), 2: (COLOR_SUCCESS, "GOOD"), 1: (COLOR_WARNING, "LOW")}.get(self.actions_remaining, (COLOR_DANGER, "NONE"))
         self._draw_text(str(self.actions_remaining), self.font_xl, ac[0], mx+80, controls_y+50, center=True, glow=True)
         self._draw_text(ac[1], self.font_tiny, ac[0], mx+80, controls_y+70, center=True)
-        # Next month button
         nb_w, nb_h = 200, 90
         nb_x = mx + main_area_w - 60 - nb_w
         for btn in self.cached_buttons[GameState.PLAYING]:
@@ -1790,6 +2163,9 @@ class FinanceGame:
             if self.show_help_panel: self._draw_help_panel(events)
             if self.show_event_modal: self._draw_event_modal(events)
             if self.show_custom_input: self._draw_custom_input_modal(events)
+            # Avatar creator modal - drawn on top of everything
+            if self.avatar_creator.visible:
+                self._draw_avatar_creator_modal(events)
             pygame.display.flip()
             self.clock.tick(FPS)
         pygame.quit()
