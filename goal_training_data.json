@@ -1,0 +1,15 @@
+[
+  {
+    "early_avg_happiness": 39.5,
+    "early_avg_stress": 22.833333333333332,
+    "early_total_investments": 5000,
+    "early_total_saved": 0,
+    "early_total_debt_paid": 0,
+    "early_num_leisure": 0,
+    "early_num_risky": 0,
+    "goal_networth": false,
+    "goal_emergency": false,
+    "goal_debtfree": false,
+    "goal_happiness": false
+  }
+]

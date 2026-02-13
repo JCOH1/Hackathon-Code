@@ -10,6 +10,18 @@ import math
 import uuid
 import threading
 
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for pygame embedding
+import matplotlib.pyplot as plt
+import matplotlib.backends.backend_agg as agg
+
+# ========== NEW IMPORTS for ML ==========
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.multioutput import MultiOutputClassifier
+import joblib
+# ========================================
+
 from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -725,6 +737,21 @@ class FinanceGame:
         self.chatbot_has_new_message = False
         self.avatar_creator = CustomAvatarCreator()
 
+        # ========== DATA SCIENCE ADDITIONS ==========
+        self.monthly_log = []               # monthly snapshots for dashboard
+        # Action counters for statistics
+        self.total_investments = 0
+        self.total_saved = 0
+        self.total_debt_paid = 0
+        self.num_leisure = 0
+        self.num_risky = 0
+
+        # ========== GOAL PREDICTION ==========
+        self.goal_predictor = None
+        self.goal_features = None
+        self._load_goal_predictor()
+        # ======================================
+
     def _init_fonts(self):
         self.font_xl = pygame.font.SysFont("Arial Black", 72, bold=True)
         self.font_large = pygame.font.SysFont("Arial", 48, bold=True)
@@ -766,6 +793,298 @@ class FinanceGame:
         self.custom_input_type = ""
         self.help_scroll_offset = 0
         self.help_max_scroll = 0
+
+    # ========== DATA SCIENCE HELPER METHODS ==========
+    def _save_game_summary(self):
+        if not self.monthly_log:
+            return
+        avg_happiness = sum(m['happiness'] for m in self.monthly_log) / len(self.monthly_log)
+        avg_stress = sum(m['stress'] for m in self.monthly_log) / len(self.monthly_log)
+        summary = {
+            'class': self.selected_class,
+            'education': self.selected_education,
+            'difficulty': self.selected_difficulty,
+            'total_investments': self.total_investments,
+            'total_saved': self.total_saved,
+            'total_debt_paid': self.total_debt_paid,
+            'num_leisure': self.num_leisure,
+            'num_risky': self.num_risky,
+            'had_addiction': int('addict' in self.debuffs),
+            'avg_happiness': avg_happiness,
+            'avg_stress': avg_stress,
+            'final_score': self.calculate_score(),
+        }
+        try:
+            with open('game_summaries.json', 'r') as f:
+                summaries = json.load(f)
+        except FileNotFoundError:
+            summaries = []
+        summaries.append(summary)
+        with open('game_summaries.json', 'w') as f:
+            json.dump(summaries, f, indent=2)
+
+    def _save_goal_training_data(self):
+        """Save early-game features and final goal outcomes for training."""
+        if len(self.monthly_log) < 6:
+            return  # not enough data
+        early = self.monthly_log[:6]
+        avg_hap = sum(m['happiness'] for m in early) / 6
+        avg_str = sum(m['stress'] for m in early) / 6
+
+        # Use the cumulative action totals (they include actions up to month 6)
+        # This is a simplification; ideally we'd have per‑month action counts.
+        data = {
+            'early_avg_happiness': avg_hap,
+            'early_avg_stress': avg_str,
+            'early_total_investments': self.total_investments,
+            'early_total_saved': self.total_saved,
+            'early_total_debt_paid': self.total_debt_paid,
+            'early_num_leisure': self.num_leisure,
+            'early_num_risky': self.num_risky,
+            'goal_networth': self.goals['netWorth']['completed'],
+            'goal_emergency': self.goals['emergencyFund']['completed'],
+            'goal_debtfree': self.goals['debtFree']['completed'],
+            'goal_happiness': self.goals['happiness']['completed'],
+        }
+        try:
+            with open('goal_training_data.json', 'r') as f:
+                all_data = json.load(f)
+        except FileNotFoundError:
+            all_data = []
+        all_data.append(data)
+        with open('goal_training_data.json', 'w') as f:
+            json.dump(all_data, f, indent=2)
+
+    def _load_goal_predictor(self):
+        if os.path.exists('goal_predictor.pkl') and os.path.exists('goal_features.pkl'):
+            try:
+                self.goal_predictor = joblib.load('goal_predictor.pkl')
+                self.goal_features = joblib.load('goal_features.pkl')
+            except Exception as e:
+                print(f"Failed to load goal predictor: {e}")
+                self.goal_predictor = None
+
+    def predict_goal_completion(self):
+        if not self.goal_predictor or len(self.monthly_log) < 6:
+            return None
+        early = self.monthly_log[:6]
+        avg_hap = sum(m['happiness'] for m in early) / 6
+        avg_str = sum(m['stress'] for m in early) / 6
+        features = pd.DataFrame([[
+            avg_hap,
+            avg_str,
+            self.total_investments,
+            self.total_saved,
+            self.total_debt_paid,
+            self.num_leisure,
+            self.num_risky
+        ]], columns=self.goal_features)
+        probs = self.goal_predictor.predict_proba(features)
+        # probs is a list of arrays, each of shape (1,2) -> [prob_no, prob_yes]
+        results = {
+            'Net Worth': probs[0][0][1],
+            'Emergency Fund': probs[1][0][1],
+            'Debt Free': probs[2][0][1],
+            'Happiness': probs[3][0][1]
+        }
+        return results
+
+    def _show_goal_predictions(self):
+        if not self.goal_predictor or len(self.monthly_log) < 6:
+            self.game_message = "Need at least 6 months of data and a trained model."
+            return
+        results = self.predict_goal_completion()
+        if not results:
+            return
+
+        # Semi-transparent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        self.screen.blit(overlay, (0, 0))
+
+        panel_w, panel_h = 500, 350
+        panel_x = (SCREEN_WIDTH - panel_w) // 2
+        panel_y = (SCREEN_HEIGHT - panel_h) // 2
+        pygame.draw.rect(self.screen, COLOR_PANEL, (panel_x, panel_y, panel_w, panel_h), border_radius=15)
+        pygame.draw.rect(self.screen, COLOR_ACCENT, (panel_x, panel_y, panel_w, panel_h), 3, border_radius=15)
+
+        self._draw_text("🎯 Goal Completion Odds", self.font_medium, COLOR_PRIMARY, panel_x+panel_w//2, panel_y+30, center=True)
+
+        y = panel_y + 70
+        for goal, prob in results.items():
+            color = COLOR_SUCCESS if prob > 0.7 else COLOR_WARNING if prob > 0.3 else COLOR_DANGER
+            self._draw_text(f"{goal}: {prob*100:.1f}%", self.font_small, color, panel_x+30, y)
+            # progress bar
+            bar_x = panel_x + 200
+            bar_y = y - 5
+            bar_w = 250
+            bar_h = 20
+            pygame.draw.rect(self.screen, COLOR_PANEL_HOVER, (bar_x, bar_y, bar_w, bar_h), border_radius=5)
+            fill_w = int(bar_w * prob)
+            pygame.draw.rect(self.screen, color, (bar_x, bar_y, fill_w, bar_h), border_radius=5)
+            y += 40
+
+        # Close button
+        close_btn = Button(panel_x+panel_w-60, panel_y+10, 40, 40, "✕", COLOR_DANGER, COLOR_TEXT, "close_pred")
+        close_btn.draw(self.screen, self.font_small)
+        pygame.display.flip()
+
+        # Wait for click
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if close_btn.rect.collidepoint(event.pos):
+                        waiting = False
+            self.clock.tick(30)
+
+    def show_dashboard(self):
+        if not self.monthly_log:
+            return
+
+        # Helper to convert pygame 0-255 colors to matplotlib 0-1 floats
+        def norm(color):
+            return tuple(c/255.0 for c in color)
+
+        df = pd.DataFrame(self.monthly_log)
+        df['net_worth'] = df['money'] + df['investments'] + df['emergency_fund'] - df['debt']
+
+        # Custom dark theme
+        plt.style.use('dark_background')
+        fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+        fig.patch.set_facecolor(norm(COLOR_BG))
+        fig.suptitle(f'📊 GAME DASHBOARD — Final Score: {self.calculate_score():,}', 
+                    fontsize=18, fontweight='bold', color=norm(COLOR_PRIMARY), y=0.98)
+
+        # Colors for plots (normalized)
+        colors = {
+            'net_worth': norm(COLOR_PRIMARY),
+            'happiness': norm(COLOR_SUCCESS),
+            'stress': norm(COLOR_DANGER),
+            'cash': norm((0, 255, 150)),      # lime
+            'invest': norm(COLOR_PRIMARY),
+            'emergency': norm(COLOR_WARNING),
+            'debt': norm(COLOR_DANGER)
+        }
+        panel_bg = norm(COLOR_PANEL)
+        panel_hover = norm(COLOR_PANEL_HOVER)
+        text_dim = norm(COLOR_TEXT_DIM)
+        text_color = norm(COLOR_TEXT)
+        accent = norm(COLOR_ACCENT)
+        border = norm(COLOR_BORDER)
+
+        # 1. Net worth over time
+        ax = axes[0,0]
+        ax.set_facecolor(panel_bg)
+        ax.plot(df['month'], df['net_worth'], marker='o', color=colors['net_worth'], 
+                linewidth=3, markersize=8)
+        ax.set_title('Net Worth Progression', color=accent, fontsize=14)
+        ax.set_xlabel('Month', color=text_dim)
+        ax.set_ylabel('$', color=text_dim)
+        ax.tick_params(colors=text_dim)
+        ax.grid(True, linestyle='--', alpha=0.3, color=border)
+        for spine in ax.spines.values():
+            spine.set_color(border)
+
+        # 2. Happiness vs Stress
+        ax = axes[0,1]
+        ax.set_facecolor(panel_bg)
+        ax.plot(df['month'], df['happiness'], label='Happiness', color=colors['happiness'],
+                linewidth=3)
+        ax.plot(df['month'], df['stress'], label='Stress', color=colors['stress'],
+                linewidth=3)
+        ax.set_title('Well‑Being Over Time', color=accent, fontsize=14)
+        ax.set_xlabel('Month', color=text_dim)
+        ax.set_ylabel('Percentage', color=text_dim)
+        ax.set_ylim(0, 100)
+        ax.tick_params(colors=text_dim)
+        ax.legend(facecolor=panel_bg, labelcolor=text_color)
+        ax.grid(True, linestyle='--', alpha=0.3, color=border)
+        for spine in ax.spines.values():
+            spine.set_color(border)
+
+        # 3. Final asset composition
+        ax = axes[1,0]
+        ax.set_facecolor(panel_bg)
+        end = df.iloc[-1]
+        labels = ['Cash', 'Investments', 'Emergency', 'Debt (-)']
+        values = [end['money'], end['investments'], end['emergency_fund'], -end['debt']]
+        bar_colors = [colors['cash'], colors['invest'], colors['emergency'], colors['debt']]
+        bars = ax.bar(labels, values, color=bar_colors, edgecolor=border, linewidth=2)
+        ax.set_title('Final Financial Snapshot', color=accent, fontsize=14)
+        ax.tick_params(colors=text_dim, rotation=15)
+        ax.axhline(0, color=border, linewidth=1)
+
+        # Legend
+        from matplotlib.patches import Rectangle
+        legend_handles = [Rectangle((0,0),1,1, color=bar_colors[i], ec=border, linewidth=2) for i in range(len(labels))]
+        ax.legend(legend_handles, labels, loc='upper right', facecolor=panel_bg, labelcolor=text_color, framealpha=0.9)
+
+        for spine in ax.spines.values():
+            spine.set_color(border)
+
+        # 4. Action statistics (text panel)
+        ax = axes[1,1]
+        ax.set_facecolor(panel_bg)
+        ax.axis('off')
+        stats_text = (
+            f"💰 Total Invested: ${self.total_investments:,.0f}\n"
+            f"💵 Total Saved: ${self.total_saved:,.0f}\n"
+            f"💳 Debt Paid: ${self.total_debt_paid:,.0f}\n"
+            f"🎉 Leisure Actions: {self.num_leisure}\n"
+            f"⚠️ Risky Actions: {self.num_risky}\n"
+            f"😷 Had Addiction: {'Yes' if 'addict' in self.debuffs else 'No'}"
+        )
+        ax.text(0.1, 0.5, stats_text, transform=ax.transAxes,
+                fontsize=13, color=text_color, verticalalignment='center',
+                family='monospace', linespacing=1.8,
+                bbox=dict(boxstyle='round,pad=0.5', facecolor=panel_hover, 
+                        edgecolor=accent, linewidth=2))
+
+        plt.tight_layout()
+
+        # Render to pygame surface
+        canvas = agg.FigureCanvasAgg(fig)
+        canvas.draw()
+        buffer, (width, height) = canvas.print_to_buffer()
+        surf = pygame.image.frombuffer(buffer, (width, height), "RGBA")
+
+        # Draw semi‑transparent overlay behind dashboard
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (0, 0))
+
+        # Blit the dashboard surface
+        dash_x = (SCREEN_WIDTH - width) // 2
+        dash_y = (SCREEN_HEIGHT - height) // 2
+        self.screen.blit(surf, (dash_x, dash_y))
+
+        # ---- CLOSE BUTTON ----
+        close_btn_size = 40
+        close_btn_rect = pygame.Rect(dash_x + width - close_btn_size - 10, dash_y + 10, close_btn_size, close_btn_size)
+        pygame.draw.rect(self.screen, COLOR_DANGER, close_btn_rect, border_radius=8)
+        pygame.draw.rect(self.screen, COLOR_TEXT, close_btn_rect, 2, border_radius=8)
+        self._draw_text("✕", self.font_medium, COLOR_TEXT, close_btn_rect.centerx, close_btn_rect.centery, center=True)
+
+        pygame.display.flip()
+
+        # Wait for close button or ESC key
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    waiting = False
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if close_btn_rect.collidepoint(event.pos):
+                        waiting = False
+            self.clock.tick(30)
+    # ===================================================
 
     def _toggle_chatbot(self):
         self.show_chatbot = not self.show_chatbot
@@ -886,12 +1205,15 @@ class FinanceGame:
         self.cached_buttons[GameState.SETUP][1].callback = lambda: setattr(self, 'state', GameState.TITLE)
 
     def _init_game_over_buttons(self):
+        center_x = SCREEN_WIDTH // 2
         self.cached_buttons[GameState.GAME_OVER] = [
-            Button(SCREEN_WIDTH//2-220, 680, 200, 60, "Play Again", COLOR_SUCCESS, text_color=COLOR_BG, button_id="play_again", gradient=True, icon="🔄"),
-            Button(SCREEN_WIDTH//2+20, 680, 200, 60, "Main Menu", COLOR_PANEL, button_id="menu", icon="🏠")
+            Button(center_x - 220, 680, 200, 60, "Play Again", COLOR_SUCCESS, text_color=COLOR_BG, button_id="play_again", gradient=True, icon="🔄"),
+            Button(center_x + 20, 680, 200, 60, "Main Menu", COLOR_PANEL, button_id="menu", icon="🏠"),
+            Button(center_x - 100, 760, 200, 50, "View Statistics", COLOR_ACCENT, text_color=COLOR_TEXT, button_id="stats", icon="📊")
         ]
         self.cached_buttons[GameState.GAME_OVER][0].callback = self._reset_for_new_game
         self.cached_buttons[GameState.GAME_OVER][1].callback = lambda: setattr(self, 'state', GameState.TITLE)
+        self.cached_buttons[GameState.GAME_OVER][2].callback = self.show_dashboard
 
     def _reset_for_new_game(self):
         self.state = GameState.SETUP
@@ -915,10 +1237,16 @@ class FinanceGame:
         chatbot_btn.callback = self._toggle_chatbot
         self.cached_buttons[GameState.PLAYING].append(chatbot_btn)
 
+        # ========== NEW PREDICT BUTTON ==========
+        predict_btn = Button(SCREEN_WIDTH-350, 20, 120, 40, "PREDICT GOALS", COLOR_ACCENT, COLOR_TEXT, button_id="predict", icon="🎯")
+        predict_btn.callback = self._show_goal_predictions
+        self.cached_buttons[GameState.PLAYING].append(predict_btn)
+        # ========================================
+
     def _update_playing_buttons(self):
         self.cached_buttons[GameState.PLAYING] = [
             btn for btn in self.cached_buttons[GameState.PLAYING]
-            if btn.button_id in ["next_month", "help", "chatbot"]
+            if btn.button_id in ["next_month", "help", "chatbot", "predict"]
         ]
         self._create_action_buttons()
         self.need_button_update = False
@@ -1026,7 +1354,7 @@ class FinanceGame:
         view_rect = pygame.Rect(sidebar_w + main_area_w + 10, header_height + 10,
                                 action_panel_w - 20, SCREEN_HEIGHT - header_height - 100)
         for btn in self.cached_buttons[GameState.PLAYING]:
-            if btn.button_id not in ["next_month", "help", "chatbot"]:
+            if btn.button_id not in ["next_month", "help", "chatbot", "predict"]:
                 new_y = btn.original_y - self.scroll_offset
                 btn.rect.y = new_y
                 btn.visible = (new_y + btn.rect.height > view_rect.y and new_y < view_rect.bottom)
@@ -1083,6 +1411,15 @@ class FinanceGame:
         self.locked_action = None
         for goal in self.goals.values():
             goal['completed'] = False
+
+        # Reset data science counters
+        self.monthly_log = []
+        self.total_investments = 0
+        self.total_saved = 0
+        self.total_debt_paid = 0
+        self.num_leisure = 0
+        self.num_risky = 0
+
         self._init_playing_buttons()
         self.need_button_update = True
         self.state = GameState.PLAYING
@@ -1117,6 +1454,19 @@ class FinanceGame:
         if self.emergency_fund > 0: self.emergency_fund *= 1.00167
         self._update_wellbeing(messages)
         self._check_random_events()
+
+        # Append monthly snapshot before incrementing month
+        snapshot = {
+            'month': self.current_month,
+            'money': self.money,
+            'debt': self.debt,
+            'investments': self.investments,
+            'emergency_fund': self.emergency_fund,
+            'happiness': self.happiness,
+            'stress': self.stress,
+        }
+        self.monthly_log.append(snapshot)
+
         self.current_month += 1
         self.actions_taken_this_month = 0
         self.actions_remaining = ACTIONS_PER_MONTH
@@ -1208,6 +1558,13 @@ class FinanceGame:
         self.actions_remaining -= 1
         if choice.happiness > 0:
             self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_SUCCESS)
+
+        # Update counters for statistics
+        if choice.choice_type == 'leisure':
+            self.num_leisure += 1
+        elif choice.choice_type == 'risky':
+            self.num_risky += 1
+
         if choice.choice_type == 'education':
             self._handle_education_upgrade(choice_key, choice)
             return
@@ -1261,6 +1618,7 @@ class FinanceGame:
         if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
         if self.money >= amount:
             self.money -= amount; self.investments += amount
+            self.total_investments += amount   # for statistics
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
             self.game_message = f"💰 Invested ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_PRIMARY)
@@ -1281,6 +1639,7 @@ class FinanceGame:
         if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
         if self.money >= amount:
             self.money -= amount; self.emergency_fund += amount
+            self.total_saved += amount   # for statistics
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
             self.game_message = f"🏦 Saved ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self.need_button_update = True
@@ -1290,6 +1649,7 @@ class FinanceGame:
         payment = min(amount, self.debt, self.money)
         if payment > 0:
             self.money -= payment; self.debt -= payment; self.stress = max(0, self.stress - 5)
+            self.total_debt_paid += payment   # for statistics
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
             self.game_message = f"💳 Paid ${payment:.0f} debt | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_SUCCESS)
@@ -1308,6 +1668,7 @@ class FinanceGame:
         elif action_type == 'save':
             if self.money >= amount:
                 self.money -= amount; self.emergency_fund += amount
+                self.total_saved += amount   # for statistics
                 self.actions_taken_this_month += 1; self.actions_remaining -= 1
                 self.game_message = f"💵 Saved ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
                 self.need_button_update = True
@@ -1377,8 +1738,11 @@ class FinanceGame:
     def end_game(self, completed, reason=''):
         score = self.calculate_score()
         if score > self.high_score:
-            self.high_score = score; self._save_high_score()
+            self.high_score = score
+            self._save_high_score()
         self.game_message = reason or ('Game completed!' if completed else 'Game over!')
+        self._save_game_summary()          # save for optional later use
+        self._save_goal_training_data()    # save for goal prediction training
         self.state = GameState.GAME_OVER
 
     def _draw_text(self, text, font, color, x, y, center=False, shadow=False, glow=False):

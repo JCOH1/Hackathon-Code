@@ -6,3 +6,7 @@ langchain-openai==0.3.0
 langchain-community==0.3.0
 langgraph==0.3.0
 openai==1.55.0
+pandas
+matplotlib
+scikit-learn
+joblib
