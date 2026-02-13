@@ -10,6 +10,17 @@ import math
 import uuid
 import threading
 
+from dotenv import load_dotenv
+from langchain_openai import AzureChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+
+# ------------------------------------------------------------
+# Load environment variables for Azure OpenAI
+# ------------------------------------------------------------
+load_dotenv()
+
 pygame.init()
 
 SCREEN_WIDTH = 1400
@@ -130,14 +141,19 @@ def draw_composite_avatar(screen, face_emoji, acc_data, x, y, font_size):
         acc_rect = acc_surf.get_rect(center=(pixel_x, pixel_y))
         screen.blit(acc_surf, acc_rect)
 
-class SimpleHintBot:
+# ============================================================
+# AI-POWERED FINANCIAL BOT (LangChain + Azure OpenAI)
+# ============================================================
+class AIPoweredFinancialBot:
     def __init__(self):
         self.name = "Finley"
         self.avatar = "🦊"
         self.enabled = True
         self.is_thinking = False
-        self.last_response = "Hi! I'm Finley, your financial assistant! Ask me for tips! 🦊"
+        self.last_response = "Hi! I'm Finley, your AI-powered financial assistant! Ask me about investing, saving, debt, or well‑being! 🦊"
         self.ready = True
+
+        # Hardcoded hints – fallback when LLM is offline
         self.hints = {
             "invest": [
                 "💡 Investing early lets compound interest work for you!",
@@ -178,8 +194,66 @@ class SimpleHintBot:
             ]
         }
 
-    def ask(self, question, game_state=None):
-        self.is_thinking = True
+        # Azure OpenAI setup
+        self.llm = None
+        self.chain = None
+        self.chat_runner = None
+        self.session_id = str(uuid.uuid4())
+        self.history = None
+
+        try:
+            AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+            AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+            AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
+            AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+
+            if all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY,
+                    AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT]):
+                self.llm = AzureChatOpenAI(
+                    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+                    api_key=AZURE_OPENAI_API_KEY,
+                    api_version=AZURE_OPENAI_API_VERSION,
+                    deployment_name=AZURE_OPENAI_DEPLOYMENT,
+                )
+                self.prompt = ChatPromptTemplate.from_messages([
+                    ("system", self._get_system_prompt()),
+                    MessagesPlaceholder(variable_name="history"),
+                    ("human", "{input}"),
+                ])
+                self.chain = self.prompt | self.llm
+                self.history = ChatMessageHistory()
+                self.chat_runner = RunnableWithMessageHistory(
+                    self.chain,
+                    lambda session_id: self.history,
+                    input_messages_key="input",
+                    history_messages_key="history",
+                )
+        except Exception as e:
+            print(f"⚠️ LLM setup failed, using hardcoded hints only: {e}")
+            self.llm = None
+            self.chat_runner = None
+
+    def _get_system_prompt(self):
+        return """
+Role: You are "Finley", a financial assistant and virtual pet for CCDS Hackathon 2026.
+Personality: Warm, encouraging, and knowledgeable about personal finance.
+Goal: Help players manage their money, reduce stress, increase happiness, and achieve financial goals.
+Response: Concise (2–3 sentences max). Use emojis occasionally to be friendly.
+        """
+
+    def get_context_from_game(self, game):
+        return {
+            'month': game.current_month,
+            'money': game.money,
+            'debt': game.debt,
+            'investments': game.investments,
+            'emergency_fund': game.emergency_fund,
+            'happiness': game.happiness,
+            'stress': game.stress,
+            'actions_remaining': game.actions_remaining
+        }
+
+    def _hardcoded_response(self, question, game_state=None):
         question = question.lower()
         context = ""
         if game_state:
@@ -198,29 +272,45 @@ class SimpleHintBot:
             response = random.choice(self.hints["education"])
         else:
             response = random.choice(self.hints["general"])
-        self.last_response = context + response
-        self.is_thinking = False
-        return self.last_response
+        return context + response
 
-    def get_context_from_game(self, game):
-        return {
-            'month': game.current_month,
-            'money': game.money,
-            'debt': game.debt,
-            'investments': game.investments,
-            'emergency_fund': game.emergency_fund,
-            'happiness': game.happiness,
-            'stress': game.stress,
-            'actions_remaining': game.actions_remaining
-        }
+    def ask(self, question, game_state=None):
+        self.is_thinking = True
+
+        if self.chat_runner is None:
+            self.last_response = self._hardcoded_response(question, game_state)
+            self.is_thinking = False
+            return self.last_response
+
+        def worker():
+            try:
+                context_str = ""
+                if game_state:
+                    context_str = f"(Month {game_state['month']}, Cash: ${game_state['money']:,.0f}, Debt: ${game_state['debt']:,.0f}) "
+                full_input = f"{context_str}{question}"
+
+                result = self.chat_runner.invoke(
+                    {"input": full_input},
+                    config={"configurable": {"session_id": self.session_id}},
+                )
+                self.last_response = result.content
+            except Exception as e:
+                print(f"LLM error: {e}")
+                self.last_response = self._hardcoded_response(question, game_state)
+            finally:
+                self.is_thinking = False
+
+        threading.Thread(target=worker, daemon=True).start()
+        return "..."
 
     def reset_conversation(self):
+        if self.history:
+            self.history.clear()
         self.last_response = "Conversation reset! How can I help you? 🦊"
 
-
-finance_chatbot = SimpleHintBot()
-
-
+# ============================================================
+# CHATBOT UI HELPERS (restored from original rijika.py)
+# ============================================================
 def draw_chatbot_icon(screen, x, y, is_thinking=False, has_new_message=False):
     pygame.draw.circle(screen, COLOR_ACCENT, (x, y), 30)
     pygame.draw.circle(screen, COLOR_PRIMARY, (x, y), 32, 2)
@@ -235,7 +325,6 @@ def draw_chatbot_icon(screen, x, y, is_thinking=False, has_new_message=False):
     if has_new_message and not is_thinking:
         pygame.draw.circle(screen, COLOR_SUCCESS, (x + 20, y - 20), 8)
         pygame.draw.circle(screen, COLOR_TEXT, (x + 20, y - 20), 10, 1)
-
 
 def draw_chatbot_modal(screen, font, chatbot, game_state=None):
     modal_w, modal_h = 500, 600
@@ -272,6 +361,9 @@ def draw_chatbot_modal(screen, font, chatbot, game_state=None):
         screen.blit(font_small.render(line, True, COLOR_TEXT), (modal_x + 45, y_offset + 10 + i * 20))
     return modal_x, modal_y, modal_w, modal_h, history_rect
 
+# ============================================================
+# GAME STATE & UI COMPONENTS
+# ============================================================
 
 class GameState(Enum):
     TITLE = 1
@@ -565,7 +657,10 @@ class FinanceGame:
         self.show_chatbot = False
         self.chatbot_input_text = ""
         self.chatbot_input_active = False
-        self.chatbot = finance_chatbot
+        # ----------------------------------------------------
+        # INSTANTIATE THE AI-POWERED BOT
+        # ----------------------------------------------------
+        self.chatbot = AIPoweredFinancialBot()
         self.chatbot_has_new_message = False
         # Custom avatar creator
         self.avatar_creator = CustomAvatarCreator()
