@@ -16,9 +16,6 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 
-# ------------------------------------------------------------
-# Load environment variables for Azure OpenAI
-# ------------------------------------------------------------
 load_dotenv()
 
 pygame.init()
@@ -46,9 +43,6 @@ BURNOUT_STRESS = 100
 BURNOUT_HAPPINESS = 10
 ACTIONS_PER_MONTH = 3
 
-# ============================================================
-# AVATAR OPTIONS (preset quick picks)
-# ============================================================
 AVATARS = [
     {"emoji": "👨‍💼", "label": "Executive"},
     {"emoji": "👩‍💼", "label": "Director"},
@@ -64,10 +58,6 @@ AVATARS = [
     {"emoji": "🐉",   "label": "Dragon"},
 ]
 
-# ============================================================
-# CUSTOM AVATAR BUILDER DATA
-# ============================================================
-
 AVATAR_FACES = [
     ("😊", "Happy"),
     ("😎", "Cool"),
@@ -79,8 +69,6 @@ AVATAR_FACES = [
     ("😈", "Devil"),
 ]
 
-# Format: (Emoji, Label, (X_Offset_Percent, Y_Offset_Percent))
-# Negative Y moves UP.
 AVATAR_ACCESSORIES = [
     ("", "None", (0, 0)),
     ("👑", "Crown", (0, -0.45)),
@@ -109,40 +97,23 @@ AVATAR_BG_COLORS = [
     ((200, 200, 200), "Silver"),
 ]
 
-# ============================================================
-# HELPER FUNCTIONS
-# ============================================================
-
 def draw_composite_avatar(screen, face_emoji, acc_data, x, y, font_size):
-    """
-    Draws the face, then draws the accessory on top based on offset data.
-    acc_data is the tuple: (Emoji, Label, (off_x, off_y))
-    x, y are the center coordinates.
-    """
-    # 1. Setup Fonts
     font = pygame.font.SysFont("Segoe UI Emoji", int(font_size))
-    
-    # 2. Draw Face (Centered at x, y)
     face_surf = font.render(face_emoji, True, COLOR_TEXT)
     face_rect = face_surf.get_rect(center=(x, y))
     screen.blit(face_surf, face_rect)
-
-    # 3. Draw Accessory (if exists and not empty string)
     if acc_data and acc_data[0]:
         acc_emoji, _, offsets = acc_data
         off_x_pct, off_y_pct = offsets
-        
-        # Calculate pixel offset based on font size
-        # Note: offsets are percentage of font size relative to center
         pixel_x = x + (font_size * off_x_pct)
         pixel_y = y + (font_size * off_y_pct)
-        
         acc_surf = font.render(acc_emoji, True, COLOR_TEXT)
         acc_rect = acc_surf.get_rect(center=(pixel_x, pixel_y))
         screen.blit(acc_surf, acc_rect)
 
+
 # ============================================================
-# AI-POWERED FINANCIAL BOT (LangChain + Azure OpenAI)
+# AI-POWERED FINANCIAL BOT
 # ============================================================
 class AIPoweredFinancialBot:
     def __init__(self):
@@ -152,8 +123,6 @@ class AIPoweredFinancialBot:
         self.is_thinking = False
         self.last_response = "Hi! I'm Finley, your AI-powered financial assistant! Ask me about investing, saving, debt, or well‑being! 🦊"
         self.ready = True
-
-        # Hardcoded hints – fallback when LLM is offline
         self.hints = {
             "invest": [
                 "💡 Investing early lets compound interest work for you!",
@@ -193,20 +162,16 @@ class AIPoweredFinancialBot:
                 "💡 You started in Month 0 - survive 24 months to win!"
             ]
         }
-
-        # Azure OpenAI setup
         self.llm = None
         self.chain = None
         self.chat_runner = None
         self.session_id = str(uuid.uuid4())
         self.history = None
-
         try:
             AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
             AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
             AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION")
             AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-
             if all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY,
                     AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT]):
                 self.llm = AzureChatOpenAI(
@@ -229,7 +194,7 @@ class AIPoweredFinancialBot:
                     history_messages_key="history",
                 )
         except Exception as e:
-            print(f"⚠️ LLM setup failed, using hardcoded hints only: {e}")
+            print(f"⚠️ LLM setup failed: {e}")
             self.llm = None
             self.chat_runner = None
 
@@ -276,19 +241,16 @@ Response: Concise (2–3 sentences max). Use emojis occasionally to be friendly.
 
     def ask(self, question, game_state=None):
         self.is_thinking = True
-
         if self.chat_runner is None:
             self.last_response = self._hardcoded_response(question, game_state)
             self.is_thinking = False
             return self.last_response
-
         def worker():
             try:
                 context_str = ""
                 if game_state:
                     context_str = f"(Month {game_state['month']}, Cash: ${game_state['money']:,.0f}, Debt: ${game_state['debt']:,.0f}) "
                 full_input = f"{context_str}{question}"
-
                 result = self.chat_runner.invoke(
                     {"input": full_input},
                     config={"configurable": {"session_id": self.session_id}},
@@ -299,7 +261,6 @@ Response: Concise (2–3 sentences max). Use emojis occasionally to be friendly.
                 self.last_response = self._hardcoded_response(question, game_state)
             finally:
                 self.is_thinking = False
-
         threading.Thread(target=worker, daemon=True).start()
         return "..."
 
@@ -308,9 +269,11 @@ Response: Concise (2–3 sentences max). Use emojis occasionally to be friendly.
             self.history.clear()
         self.last_response = "Conversation reset! How can I help you? 🦊"
 
+
 # ============================================================
-# CHATBOT UI HELPERS (restored from original rijika.py)
+# CHATBOT UI HELPERS  —  FIXED VERSION
 # ============================================================
+
 def draw_chatbot_icon(screen, x, y, is_thinking=False, has_new_message=False):
     pygame.draw.circle(screen, COLOR_ACCENT, (x, y), 30)
     pygame.draw.circle(screen, COLOR_PRIMARY, (x, y), 32, 2)
@@ -326,40 +289,147 @@ def draw_chatbot_icon(screen, x, y, is_thinking=False, has_new_message=False):
         pygame.draw.circle(screen, COLOR_SUCCESS, (x + 20, y - 20), 8)
         pygame.draw.circle(screen, COLOR_TEXT, (x + 20, y - 20), 10, 1)
 
-def draw_chatbot_modal(screen, font, chatbot, game_state=None):
-    modal_w, modal_h = 500, 600
-    modal_x = SCREEN_WIDTH - modal_w - 30
+
+def _wrap_text_modal(text, font, max_width):
+    """Word-wrap helper that respects newlines in the text."""
+    paragraphs = text.split('\n')
+    all_lines = []
+    for para in paragraphs:
+        words = para.split()
+        if not words:
+            all_lines.append('')
+            continue
+        current_line = []
+        for word in words:
+            current_line.append(word)
+            if font.size(' '.join(current_line))[0] > max_width:
+                current_line.pop()
+                if current_line:
+                    all_lines.append(' '.join(current_line))
+                current_line = [word]
+        if current_line:
+            all_lines.append(' '.join(current_line))
+    return all_lines
+
+
+def draw_chatbot_modal(screen, font, chatbot, input_text="", input_active=False, game_state=None):
+    """
+    Dynamically-sized AI response bubble + visible input field.
+
+    Changes vs original:
+      1. Response bubble height is calculated from actual wrapped lines
+         (grows/shrinks with content, max 60% of modal body height).
+      2. Input box always shows placeholder text when empty.
+      3. Bubble shows a subtle animated 'thinking…' indicator.
+
+    Returns: (modal_x, modal_y, modal_w, modal_h, history_rect)
+    """
+    MODAL_W     = 500
+    HEADER_H    = 70          # fox header bar
+    INPUT_H     = 60          # input row at the bottom
+    FOOTER_PAD  = 10          # gap below input
+    BUBBLE_PAD  = 14          # inner padding inside the bubble
+    LINE_H      = 22          # pixels per text line
+    MAX_LINES   = 14          # cap bubble growth at this many lines
+    FONT_SIZE   = 16
+
+    font_small = pygame.font.SysFont("Arial", FONT_SIZE)
+
+    # ── measure how many lines the current response needs ──────────────────
+    bubble_inner_w = MODAL_W - 60 - BUBBLE_PAD * 2   # bubble width minus padding
+
+    if chatbot.is_thinking:
+        t = pygame.time.get_ticks() // 400
+        display_text = "Finley is thinking" + "." * (t % 4)
+    else:
+        display_text = chatbot.last_response
+
+    wrapped = _wrap_text_modal(display_text, font_small, bubble_inner_w)
+    n_lines  = min(len(wrapped), MAX_LINES)
+    n_lines  = max(n_lines, 2)          # always at least 2 lines tall
+
+    bubble_h = n_lines * LINE_H + BUBBLE_PAD * 2
+
+    # ── total modal height is dynamic ──────────────────────────────────────
+    BODY_PAD   = 20           # gap above bubble
+    BOTTOM_PAD = 14           # gap between bubble bottom and input
+    MODAL_H    = HEADER_H + BODY_PAD + bubble_h + BOTTOM_PAD + INPUT_H + FOOTER_PAD
+
+    modal_x = SCREEN_WIDTH - MODAL_W - 30
     modal_y = 100
-    pygame.draw.rect(screen, COLOR_BG, (modal_x, modal_y, modal_w, modal_h), border_radius=20)
-    pygame.draw.rect(screen, COLOR_ACCENT, (modal_x, modal_y, modal_w, modal_h), 3, border_radius=20)
-    pygame.draw.rect(screen, COLOR_PANEL, (modal_x, modal_y, modal_w, 70),
+
+    # ── modal shell ────────────────────────────────────────────────────────
+    pygame.draw.rect(screen, COLOR_BG,
+                     (modal_x, modal_y, MODAL_W, MODAL_H), border_radius=20)
+    pygame.draw.rect(screen, COLOR_ACCENT,
+                     (modal_x, modal_y, MODAL_W, MODAL_H), 3, border_radius=20)
+
+    # header bar
+    pygame.draw.rect(screen, COLOR_PANEL,
+                     (modal_x, modal_y, MODAL_W, HEADER_H),
                      border_top_left_radius=20, border_top_right_radius=20)
-    avatar_font = pygame.font.SysFont("Arial", 40)
-    screen.blit(avatar_font.render("🦊", True, COLOR_TEXT), (modal_x + 20, modal_y + 15))
-    title_font = pygame.font.SysFont("Arial", 24, bold=True)
-    screen.blit(title_font.render(f"{chatbot.name} - Financial Assistant", True, COLOR_PRIMARY),
-                (modal_x + 80, modal_y + 25))
-    history_rect = pygame.Rect(modal_x + 20, modal_y + 90, modal_w - 40, modal_h - 180)
-    pygame.draw.rect(screen, COLOR_PANEL, history_rect, border_radius=10)
-    y_offset = modal_y + 110
-    font_small = pygame.font.SysFont("Arial", 16)
-    bot_bubble = pygame.Rect(modal_x + 30, y_offset, modal_w - 100, 80)
-    pygame.draw.rect(screen, COLOR_PANEL_HOVER, bot_bubble, border_radius=15)
-    pygame.draw.rect(screen, COLOR_ACCENT, bot_bubble, 1, border_radius=15)
-    words = chatbot.last_response.split()
-    lines = []
-    current_line = []
-    for word in words:
-        current_line.append(word)
-        if font_small.size(' '.join(current_line))[0] > modal_w - 140:
-            current_line.pop()
-            lines.append(' '.join(current_line))
-            current_line = [word]
-    if current_line:
-        lines.append(' '.join(current_line))
-    for i, line in enumerate(lines[:4]):
-        screen.blit(font_small.render(line, True, COLOR_TEXT), (modal_x + 45, y_offset + 10 + i * 20))
-    return modal_x, modal_y, modal_w, modal_h, history_rect
+    avatar_font = pygame.font.SysFont("Segoe UI Emoji", 36)
+    screen.blit(avatar_font.render("🦊", True, COLOR_TEXT),
+                (modal_x + 16, modal_y + 14))
+    title_font = pygame.font.SysFont("Arial", 22, bold=True)
+    screen.blit(
+        title_font.render(f"{chatbot.name} – Financial Assistant", True, COLOR_PRIMARY),
+        (modal_x + 70, modal_y + 22),
+    )
+
+    # ── response bubble ────────────────────────────────────────────────────
+    bubble_x = modal_x + 20
+    bubble_y = modal_y + HEADER_H + BODY_PAD
+    bubble_w = MODAL_W - 40
+
+    pygame.draw.rect(screen, COLOR_PANEL_HOVER,
+                     (bubble_x, bubble_y, bubble_w, bubble_h), border_radius=14)
+    pygame.draw.rect(screen, COLOR_ACCENT,
+                     (bubble_x, bubble_y, bubble_w, bubble_h), 1, border_radius=14)
+
+    # render text lines (clipped to MAX_LINES)
+    text_color = COLOR_TEXT_DIM if chatbot.is_thinking else COLOR_TEXT
+    for i, line in enumerate(wrapped[:MAX_LINES]):
+        surf = font_small.render(line, True, text_color)
+        screen.blit(surf, (bubble_x + BUBBLE_PAD,
+                           bubble_y + BUBBLE_PAD + i * LINE_H))
+
+    # overflow indicator
+    if len(wrapped) > MAX_LINES:
+        more_font = pygame.font.SysFont("Arial", 13)
+        more_surf = more_font.render("▾ scroll for more", True, COLOR_ACCENT)
+        screen.blit(more_surf,
+                    (bubble_x + bubble_w - more_surf.get_width() - 8,
+                     bubble_y + bubble_h - 18))
+
+    # ── input box ──────────────────────────────────────────────────────────
+    input_y   = bubble_y + bubble_h + BOTTOM_PAD
+    input_rect = pygame.Rect(modal_x + 16, input_y, MODAL_W - 80, INPUT_H - 8)
+
+    pygame.draw.rect(screen, COLOR_PANEL, input_rect, border_radius=10)
+    border_col = COLOR_PRIMARY if input_active else COLOR_BORDER
+    pygame.draw.rect(screen, border_col, input_rect, 2, border_radius=10)
+
+    # placeholder or typed text
+    cursor = "|" if (input_active and pygame.time.get_ticks() % 1000 < 500) else ""
+    if input_text:
+        display = input_text + cursor
+        txt_col  = COLOR_TEXT
+    else:
+        display  = "Ask Finley anything… " + cursor if input_active else "💬  Ask Finley anything…"
+        txt_col  = COLOR_TEXT_DIM
+
+    inp_font = pygame.font.SysFont("Arial", 15)
+    inp_surf = inp_font.render(display, True, txt_col)
+    # vertically centre inside input box
+    screen.blit(inp_surf, (input_rect.x + 12,
+                            input_rect.y + (input_rect.height - inp_surf.get_height()) // 2))
+
+    # ── history rect (for external hit-testing) ────────────────────────────
+    history_rect = pygame.Rect(bubble_x, bubble_y, bubble_w, bubble_h)
+
+    return modal_x, modal_y, MODAL_W, MODAL_H, history_rect, input_rect
+
 
 # ============================================================
 # GAME STATE & UI COMPONENTS
@@ -581,24 +651,18 @@ class Button:
 # ============================================================
 
 class CustomAvatarCreator:
-    """Holds state for the custom avatar builder modal."""
     def __init__(self):
         self.visible = False
         self.selected_face_idx = 0
         self.selected_acc_idx = 0
         self.selected_bg_idx = 0
-        # Custom single-emoji override (user types it in)
         self.custom_emoji_text = ""
         self.custom_emoji_input_active = False
-        # Which tab: 'builder' or 'quick'
         self.tab = 'builder'
 
     def get_avatar_composition(self):
-        """Return the tuple components: (FaceString, AccessoryDataTuple)"""
         if self.custom_emoji_text.strip():
-            # If typing custom, no accessory
             return (self.custom_emoji_text.strip(), AVATAR_ACCESSORIES[0])
-        
         face = AVATAR_FACES[self.selected_face_idx][0]
         acc_data = AVATAR_ACCESSORIES[self.selected_acc_idx]
         return (face, acc_data)
@@ -657,12 +721,8 @@ class FinanceGame:
         self.show_chatbot = False
         self.chatbot_input_text = ""
         self.chatbot_input_active = False
-        # ----------------------------------------------------
-        # INSTANTIATE THE AI-POWERED BOT
-        # ----------------------------------------------------
         self.chatbot = AIPoweredFinancialBot()
         self.chatbot_has_new_message = False
-        # Custom avatar creator
         self.avatar_creator = CustomAvatarCreator()
 
     def _init_fonts(self):
@@ -1014,13 +1074,10 @@ class FinanceGame:
         self.has_university = self.selected_education in ['university', 'masters']
         self.has_masters = self.selected_education == 'masters'
         self.game_message = "Welcome to your financial journey! Good luck."
-        
-        # Use the custom avatar creator result
         face, acc_data = self.avatar_creator.get_avatar_composition()
         self.selected_avatar = face
         self.selected_avatar_acc = acc_data
         self.selected_avatar_bg = self.avatar_creator.get_bg_color()
-        
         self.actions_taken_this_month = 0
         self.actions_remaining = ACTIONS_PER_MONTH
         self.locked_action = None
@@ -1324,10 +1381,6 @@ class FinanceGame:
         self.game_message = reason or ('Game completed!' if completed else 'Game over!')
         self.state = GameState.GAME_OVER
 
-    # -----------------------------------------------------------------------
-    # DRAWING HELPERS
-    # -----------------------------------------------------------------------
-
     def _draw_text(self, text, font, color, x, y, center=False, shadow=False, glow=False):
         if shadow:
             ss = font.render(text, True, (0, 0, 0))
@@ -1374,33 +1427,18 @@ class FinanceGame:
         if current_line: lines.append(' '.join(current_line))
         return lines
 
-    # -----------------------------------------------------------------------
-    # AVATAR CREATOR MODAL
-    # -----------------------------------------------------------------------
-
     def _draw_avatar_creator_modal(self, events):
-        """Full custom avatar creator modal with face, accessories, bg color, and custom emoji input."""
         ac = self.avatar_creator
-
-        # Semi-transparent overlay
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 200))
         self.screen.blit(overlay, (0, 0))
-
-        # Modal dimensions
         mw, mh = 820, 700
         mx = (SCREEN_WIDTH - mw) // 2
         my = (SCREEN_HEIGHT - mh) // 2
-
-        # Modal background
         pygame.draw.rect(self.screen, (12, 20, 35), (mx, my, mw, mh), border_radius=24)
         pygame.draw.rect(self.screen, COLOR_ACCENT, (mx, my, mw, mh), 3, border_radius=24)
-
-        # Header bar
         pygame.draw.rect(self.screen, COLOR_PANEL, (mx, my, mw, 64), border_top_left_radius=24, border_top_right_radius=24)
         self._draw_text("✨ CUSTOM AVATAR CREATOR", self.font_medium, COLOR_ACCENT, mx + mw // 2, my + 32, center=True, glow=True)
-
-        # Tab buttons
         tab_y = my + 76
         for i, (tab_id, tab_label) in enumerate([('builder', '🎨 Build Your Own'), ('quick', '⚡ Quick Pick')]):
             tx = mx + 30 + i * 390
@@ -1417,34 +1455,24 @@ class FinanceGame:
                     if tab_rect.collidepoint(event.pos):
                         ac.tab = tab_id
                         ac.reset_custom()
-
         content_y = tab_y + 52
         mouse_pos = pygame.mouse.get_pos()
-
         if ac.tab == 'builder':
             self._draw_avatar_builder_tab(mx, my, mw, mh, content_y, ac, events, mouse_pos)
         else:
             self._draw_avatar_quickpick_tab(mx, my, mw, mh, content_y, ac, events, mouse_pos)
-
-        # --- Live Preview (always visible, right side) ---
         prev_x = mx + mw - 185
         prev_y = content_y + 10
         prev_w, prev_h = 165, 190
-
         pygame.draw.rect(self.screen, COLOR_PANEL, (prev_x, prev_y, prev_w, prev_h), border_radius=18)
         bg_col = ac.get_bg_color()
         pygame.draw.rect(self.screen, bg_col, (prev_x + 4, prev_y + 4, prev_w - 8, prev_h - 8), border_radius=14)
-
-        # Big emoji preview using composite draw
         face, acc_data = ac.get_avatar_composition()
         draw_composite_avatar(self.screen, face, acc_data, prev_x + prev_w // 2, prev_y + 80, 64)
-
         lf2 = pygame.font.SysFont("Arial", 13, bold=True)
-        self.screen.blit(lf2.render("PREVIEW", True, COLOR_TEXT_DIM), 
+        self.screen.blit(lf2.render("PREVIEW", True, COLOR_TEXT_DIM),
                          lf2.render("PREVIEW", True, COLOR_TEXT_DIM).get_rect(center=(prev_x + prev_w // 2, prev_y + prev_h - 18)))
         pygame.draw.rect(self.screen, COLOR_ACCENT, (prev_x, prev_y, prev_w, prev_h), 2, border_radius=18)
-
-        # --- Confirm / Cancel ---
         btn_y = my + mh - 68
         confirm_rect = pygame.Rect(mx + mw // 2 - 230, btn_y, 210, 48)
         cancel_rect  = pygame.Rect(mx + mw // 2 + 20,  btn_y, 210, 48)
@@ -1457,24 +1485,17 @@ class FinanceGame:
         cf = pygame.font.SysFont("Arial", 18, bold=True)
         self.screen.blit(cf.render("✓  Use This Avatar", True, COLOR_BG), cf.render("✓  Use This Avatar", True, COLOR_BG).get_rect(center=confirm_rect.center))
         self.screen.blit(cf.render("✗  Cancel", True, COLOR_TEXT), cf.render("✗  Cancel", True, COLOR_TEXT).get_rect(center=cancel_rect.center))
-
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if confirm_rect.collidepoint(event.pos):
-                    # Commit avatar choice - no further changes needed, creator state is already up to date
                     ac.visible = False
                     self._add_particle(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, COLOR_ACCENT)
                 elif cancel_rect.collidepoint(event.pos):
                     ac.visible = False
 
     def _draw_avatar_builder_tab(self, mx, my, mw, mh, content_y, ac, events, mouse_pos):
-        """Builder tab: pick face, accessories, bg color, or type custom emoji."""
-        left_w = mw - 200  # leaves room for preview on right
         section_x = mx + 20
-
         row_y = content_y + 5
-
-        # ---- Face row ----
         self._draw_text("FACE", self.font_tiny, COLOR_ACCENT, section_x, row_y)
         row_y += 24
         tile = 54
@@ -1507,8 +1528,6 @@ class FinanceGame:
                     ac.custom_emoji_text = ""
         rows_face = (len(AVATAR_FACES) + 9) // 10
         row_y += rows_face * (tile + gap) + 14
-
-        # ---- Accessory row ----
         self._draw_text("ACCESSORY / OVERLAY", self.font_tiny, COLOR_ACCENT, section_x, row_y)
         row_y += 24
         for i, (em, label, _) in enumerate(AVATAR_ACCESSORIES):
@@ -1537,8 +1556,6 @@ class FinanceGame:
                     ac.custom_emoji_text = ""
         rows_acc = (len(AVATAR_ACCESSORIES) + 9) // 10
         row_y += rows_acc * (tile + gap) + 14
-
-        # ---- Background colour row ----
         self._draw_text("AVATAR BACKGROUND COLOR", self.font_tiny, COLOR_ACCENT, section_x, row_y)
         row_y += 24
         swatch = 36
@@ -1556,8 +1573,6 @@ class FinanceGame:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and sr.collidepoint(event.pos):
                     ac.selected_bg_idx = i
         row_y += swatch + 20
-
-        # ---- Custom emoji override ----
         self._draw_text("OR TYPE YOUR OWN EMOJI (overrides selections above):", self.font_tiny, COLOR_WARNING, section_x, row_y)
         row_y += 24
         input_rect = pygame.Rect(section_x, row_y, 260, 44)
@@ -1570,14 +1585,12 @@ class FinanceGame:
         ef2 = pygame.font.SysFont("Segoe UI Emoji", 22)
         rendered = ef2.render((ac.custom_emoji_text + cursor) if is_active else disp_text, True, txt_col)
         self.screen.blit(rendered, (input_rect.x + 10, input_rect.y + 10))
-        # clear button
         clr_rect = pygame.Rect(input_rect.right + 10, row_y + 4, 70, 36)
         clr_hov = clr_rect.collidepoint(mouse_pos)
         pygame.draw.rect(self.screen, (COLOR_DANGER if clr_hov else COLOR_PANEL_HOVER), clr_rect, border_radius=8)
         pygame.draw.rect(self.screen, COLOR_DANGER, clr_rect, 1, border_radius=8)
         cf2 = pygame.font.SysFont("Arial", 14, bold=True)
         self.screen.blit(cf2.render("Clear", True, COLOR_TEXT), cf2.render("Clear", True, COLOR_TEXT).get_rect(center=clr_rect.center))
-
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if input_rect.collidepoint(event.pos):
@@ -1589,7 +1602,6 @@ class FinanceGame:
                     ac.custom_emoji_input_active = False
             if event.type == pygame.KEYDOWN and ac.custom_emoji_input_active:
                 if event.key == pygame.K_BACKSPACE:
-                    # Handle multi-byte emoji deletion properly
                     if ac.custom_emoji_text:
                         ac.custom_emoji_text = ac.custom_emoji_text[:-1]
                 elif event.key == pygame.K_ESCAPE:
@@ -1597,31 +1609,24 @@ class FinanceGame:
                 elif event.key == pygame.K_RETURN:
                     ac.custom_emoji_input_active = False
                 else:
-                    # Allow any unicode character (emoji, letters)
                     if len(ac.custom_emoji_text) < 6:
                         ac.custom_emoji_text += event.unicode
 
     def _draw_avatar_quickpick_tab(self, mx, my, mw, mh, content_y, ac, events, mouse_pos):
-        """Quick pick tab: the original 12 preset avatars."""
         section_x = mx + 20
         tile_size = 72
         tile_gap  = 14
-        num = len(AVATARS)
         cols = 6
         start_y = content_y + 18
-
         self._draw_text("CHOOSE A PRESET AVATAR", self.font_small, COLOR_ACCENT, section_x + 10, start_y - 8)
-
         for i, av in enumerate(AVATARS):
             col = i % cols
             row = i // cols
             tx = section_x + col * (tile_size + tile_gap)
             ty = start_y + 30 + row * (tile_size + tile_gap + 20)
             tile_rect = pygame.Rect(tx, ty, tile_size, tile_size)
-            # Use quick_pick_idx to track selection within this tab
             is_selected = (ac.tab == 'quick' and ac.selected_face_idx == i and not ac.custom_emoji_text)
             is_hovered  = tile_rect.collidepoint(mouse_pos)
-
             if is_selected:
                 halo = pygame.Surface((tile_size + 12, tile_size + 12), pygame.SRCALPHA)
                 pygame.draw.rect(halo, (*COLOR_PRIMARY, 55), (0, 0, tile_size + 12, tile_size + 12), border_radius=14)
@@ -1631,34 +1636,24 @@ class FinanceGame:
                 pygame.draw.rect(self.screen, COLOR_PANEL_HOVER, tile_rect, border_radius=12)
             else:
                 pygame.draw.rect(self.screen, (28, 42, 62), tile_rect, border_radius=12)
-
             border_col = COLOR_PRIMARY if is_selected else (COLOR_ACCENT if is_hovered else COLOR_BORDER)
             pygame.draw.rect(self.screen, border_col, tile_rect, 2 if not is_selected else 3, border_radius=12)
-
             ef = pygame.font.SysFont("Segoe UI Emoji", 34)
             es = ef.render(av["emoji"], True, COLOR_TEXT)
             self.screen.blit(es, es.get_rect(center=(tx + tile_size // 2, ty + tile_size // 2 - 8)))
-
             lf = pygame.font.SysFont("Arial", 11, bold=True)
             ls = lf.render(av["label"], True, COLOR_BG if is_selected else COLOR_TEXT_DIM)
             self.screen.blit(ls, ls.get_rect(center=(tx + tile_size // 2, ty + tile_size - 10)))
-
             for event in events:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if tile_rect.collidepoint(event.pos):
-                        # In quick pick tab, store the preset emoji directly
                         ac.custom_emoji_text = av["emoji"]
                         ac.selected_face_idx = i
                         self._add_particle(tx + tile_size // 2, ty + tile_size // 2, COLOR_ACCENT)
 
-    # -----------------------------------------------------------------------
-    # SETUP SCREEN - now includes avatar button instead of old strip
-    # -----------------------------------------------------------------------
-
     def _draw_setup(self, events):
         self._draw_gradient_background()
         self._draw_text("⚡ CHARACTER SETUP", self.font_large, COLOR_PRIMARY, SCREEN_WIDTH//2, 40, center=True, glow=True)
-
         section_width = 380
         gap = 35
         top_row_total = 3 * section_width + 2 * gap
@@ -1666,10 +1661,7 @@ class FinanceGame:
         self._draw_class_selection(start_x, section_width, events)
         self._draw_education_selection(start_x + section_width + gap, section_width, events)
         self._draw_difficulty_selection(start_x + (section_width + gap) * 2, section_width, events)
-
-        # New avatar row (button to open creator + live mini-preview)
         self._draw_avatar_row(events)
-
         self.cached_buttons[GameState.SETUP][0].enabled = all(
             [self.selected_class, self.selected_education, self.selected_difficulty])
         for btn in self.cached_buttons[GameState.SETUP]:
@@ -1680,36 +1672,25 @@ class FinanceGame:
                 btn.handle_event(event)
 
     def _draw_avatar_row(self, events):
-        """Compact row: mini preview + 'Customise Avatar' button."""
         row_y   = 680
         panel_x = 60
         panel_w = SCREEN_WIDTH - 120
         panel_h = 120
-
         pygame.draw.rect(self.screen, COLOR_PANEL, (panel_x, row_y, panel_w, panel_h), border_radius=16)
         pygame.draw.rect(self.screen, COLOR_ACCENT, (panel_x, row_y, panel_w, panel_h), 2, border_radius=16)
-
         self._draw_text("YOUR AVATAR", self.font_small, COLOR_ACCENT, panel_x + 22, row_y + 14)
-
-        # Mini preview circle
         face, acc_data = self.avatar_creator.get_avatar_composition()
         bg_col = self.avatar_creator.get_bg_color()
         cx, cy = panel_x + 58, row_y + 75
         pygame.draw.circle(self.screen, bg_col, (cx, cy), 35)
         pygame.draw.circle(self.screen, COLOR_ACCENT, (cx, cy), 37, 2)
-        
         draw_composite_avatar(self.screen, face, acc_data, cx, cy, 36)
-
-        # Description text
         desc_f = pygame.font.SysFont("Arial", 15)
         desc_s = desc_f.render(f"Click 'Customise Avatar' to personalise your character", True, COLOR_TEXT_DIM)
         self.screen.blit(desc_s, (panel_x + 115, row_y + 60))
-
-        # Customise button
         btn_rect = pygame.Rect(panel_x + panel_w - 250, row_y + 22, 230, 56)
         mouse_pos = pygame.mouse.get_pos()
         is_hov = btn_rect.collidepoint(mouse_pos)
-        # gradient fill
         for i in range(btn_rect.height):
             ratio = i / btn_rect.height
             c = (
@@ -1724,15 +1705,10 @@ class FinanceGame:
         bf = pygame.font.SysFont("Arial", 18, bold=True)
         bs = bf.render("✏️  Customise Avatar", True, COLOR_BG)
         self.screen.blit(bs, bs.get_rect(center=btn_rect.center))
-
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if btn_rect.collidepoint(event.pos):
                     self.avatar_creator.visible = True
-
-    # -----------------------------------------------------------------------
-    # SCREEN DRAW METHODS
-    # -----------------------------------------------------------------------
 
     def _draw_title(self, events):
         self._draw_gradient_background()
@@ -1849,34 +1825,54 @@ class FinanceGame:
         self._draw_playing_sidebar(sidebar_w, header_height)
         self._draw_playing_main(sidebar_w, main_area_w, header_height)
         self._draw_playing_actions(action_panel_w, header_height)
-        draw_chatbot_icon(self.screen, 80, SCREEN_HEIGHT-80, self.chatbot.is_thinking, self.chatbot_has_new_message)
+        draw_chatbot_icon(self.screen, 80, SCREEN_HEIGHT-80,
+                          self.chatbot.is_thinking, self.chatbot_has_new_message)
+
+        # ── CHATBOT MODAL  (dynamic version) ──────────────────────────────
         if self.show_chatbot:
-            modal_x, modal_y, modal_w, modal_h, history_rect = draw_chatbot_modal(self.screen, self.font_medium, self.chatbot)
-            input_rect = pygame.Rect(modal_x+20, modal_y+modal_h-80, modal_w-100, 50)
-            pygame.draw.rect(self.screen, COLOR_PANEL, input_rect, border_radius=10)
-            pygame.draw.rect(self.screen, COLOR_PRIMARY, input_rect, 2, border_radius=10)
-            send_btn = Button(modal_x+modal_w-70, modal_y+modal_h-80, 50, 50, "→", COLOR_SUCCESS, COLOR_BG, "send_chat", gradient=True)
-            close_btn = Button(modal_x+modal_w-50, modal_y+20, 30, 30, "✕", COLOR_DANGER, COLOR_TEXT, "close_chat")
-            cursor = "|" if pygame.time.get_ticks() % 1000 < 500 else " "
-            display_text = (self.chatbot_input_text + cursor) if self.chatbot_input_active else (self.chatbot_input_text or "Ask for help...")
-            self.screen.blit(self.font_tiny.render(display_text, True, COLOR_TEXT), (input_rect.x+10, input_rect.y+15))
+            result = draw_chatbot_modal(
+                self.screen, self.font_medium, self.chatbot,
+                input_text=self.chatbot_input_text,
+                input_active=self.chatbot_input_active,
+            )
+            modal_x, modal_y, modal_w, modal_h, history_rect, input_rect = result
+
+            # Send / Close buttons anchored to modal bottom
+            send_btn  = Button(modal_x + modal_w - 62, input_rect.y,
+                               52, input_rect.height, "→",
+                               COLOR_SUCCESS, COLOR_BG, "send_chat", gradient=True)
+            close_btn = Button(modal_x + modal_w - 46, modal_y + 16,
+                               30, 30, "✕",
+                               COLOR_DANGER, COLOR_TEXT, "close_chat")
             close_btn.draw(self.screen, self.font_small)
             send_btn.draw(self.screen, self.font_small)
+
             for event in events:
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if close_btn.rect.collidepoint(event.pos): self._toggle_chatbot()
-                    elif send_btn.rect.collidepoint(event.pos): self._send_chatbot_message()
-                    elif input_rect.collidepoint(event.pos): self.chatbot_input_active = True
-                    else: self.chatbot_input_active = False
+                    if close_btn.rect.collidepoint(event.pos):
+                        self._toggle_chatbot()
+                    elif send_btn.rect.collidepoint(event.pos):
+                        self._send_chatbot_message()
+                    elif input_rect.collidepoint(event.pos):
+                        self.chatbot_input_active = True
+                    else:
+                        self.chatbot_input_active = False
                 if event.type == pygame.KEYDOWN and self.chatbot_input_active:
-                    if event.key == pygame.K_RETURN: self._send_chatbot_message()
-                    elif event.key == pygame.K_BACKSPACE: self.chatbot_input_text = self.chatbot_input_text[:-1]
-                    elif event.key == pygame.K_ESCAPE: self.chatbot_input_active = False
-                    elif len(self.chatbot_input_text) < 50: self.chatbot_input_text += event.unicode
+                    if event.key == pygame.K_RETURN:
+                        self._send_chatbot_message()
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.chatbot_input_text = self.chatbot_input_text[:-1]
+                    elif event.key == pygame.K_ESCAPE:
+                        self.chatbot_input_active = False
+                    elif len(self.chatbot_input_text) < 120:
+                        self.chatbot_input_text += event.unicode
+
+        # chatbot icon click
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if pygame.Rect(50, SCREEN_HEIGHT-110, 60, 60).collidepoint(event.pos):
                     self._toggle_chatbot()
+
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
                 for btn in self.cached_buttons[GameState.PLAYING]:
@@ -1899,16 +1895,11 @@ class FinanceGame:
         pygame.draw.rect(self.screen, COLOR_PANEL, (0, 0, SCREEN_WIDTH, header_height))
         pygame.draw.line(self.screen, COLOR_BORDER, (0, header_height), (SCREEN_WIDTH, header_height), 1)
         nw = self.money + self.investments + self.emergency_fund - self.debt
-
-        # Avatar bubble with custom bg color
         bg_col = getattr(self, 'selected_avatar_bg', COLOR_PRIMARY)
         pygame.draw.circle(self.screen, bg_col, (90, 40), 25)
         pygame.draw.circle(self.screen, COLOR_ACCENT, (90, 40), 27, 2)
-        
-        # Check if we have accessory data (might be missing if loaded from old save/default)
         acc_data = getattr(self, 'selected_avatar_acc', AVATAR_ACCESSORIES[0])
         draw_composite_avatar(self.screen, self.selected_avatar, acc_data, 90, 40, 28)
-
         self._draw_text("FINANCE QUEST", self.font_large, COLOR_PRIMARY, 150, 15)
         self._draw_text("MONTH", self.font_tiny, COLOR_TEXT_DIM, 550, 15)
         mc = COLOR_SUCCESS if self.current_month < MONTHS_PER_GAME*0.5 else COLOR_WARNING if self.current_month < MONTHS_PER_GAME*0.8 else COLOR_DANGER
@@ -1917,7 +1908,6 @@ class FinanceGame:
         self._draw_text(f"${self.money:,.0f}", self.font_medium, COLOR_SUCCESS if self.money > 0 else COLOR_DANGER, 750, 35)
         self._draw_text("NET WORTH", self.font_tiny, COLOR_TEXT_DIM, 950, 15)
         self._draw_text(f"${nw:,.0f}", self.font_medium, COLOR_PRIMARY if nw > 0 else COLOR_WARNING, 950, 35)
-
         for btn in self.cached_buttons[GameState.PLAYING]:
             if btn.button_id == "help":
                 btn.rect.x = SCREEN_WIDTH-120; btn.rect.y = 20; btn.rect.width = 100; btn.rect.height = 40
@@ -2258,7 +2248,6 @@ class FinanceGame:
             if self.show_help_panel: self._draw_help_panel(events)
             if self.show_event_modal: self._draw_event_modal(events)
             if self.show_custom_input: self._draw_custom_input_modal(events)
-            # Avatar creator modal - drawn on top of everything
             if self.avatar_creator.visible:
                 self._draw_avatar_creator_modal(events)
             pygame.display.flip()
