@@ -1,15 +1,25 @@
 import json
 import pandas as pd
 import joblib
+import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.multioutput import MultiOutputClassifier
 
-# Load collected data
-with open('goal_training_data.json', 'r') as f:
-    data = json.load(f)
-df = pd.DataFrame(data)
+# 1. Load your collected data
+data_filename = 'goal_training_data.json'
 
-# Features (first 6 months)
+if not os.path.exists(data_filename):
+    print(f"❌ Error: '{data_filename}' not found. Please play the game first to generate data.")
+    exit()
+
+with open(data_filename, 'r') as f:
+    data = json.load(f)
+
+# Convert list of dictionaries to DataFrame
+df = pd.DataFrame(data)
+print(f"✅ Loaded {len(df)} game records for training.")
+
+# 2. Define Features (Inputs from the first 6 months)
 feature_cols = [
     'early_avg_happiness',
     'early_avg_stress',
@@ -19,19 +29,28 @@ feature_cols = [
     'early_num_leisure',
     'early_num_risky'
 ]
-X = df[feature_cols]
 
-# Targets (4 goals)
-target_cols = ['goal_networth', 'goal_emergency', 'goal_debtfree', 'goal_happiness']
+# 3. Define Targets (The 4 goals you want to predict)
+target_cols = [
+    'goal_networth', 
+    'goal_emergency', 
+    'goal_debtfree', 
+    'goal_happiness'
+]
+
+# 4. Prepare Data
+X = df[feature_cols]
 y = df[target_cols]
 
-# Train a multi‑output random forest
+# 5. Train the Model
+# n_estimators=100 is good for stability
 base_model = RandomForestClassifier(n_estimators=100, random_state=42)
 model = MultiOutputClassifier(base_model)
 model.fit(X, y)
 
-# Save the model and feature list
+# 6. Save the trained model and feature list
 joblib.dump(model, 'goal_predictor.pkl')
 joblib.dump(feature_cols, 'goal_features.pkl')
 
-print("Model trained and saved!")
+print("🚀 Success! 'goal_predictor.pkl' has been created.")
+print("You can now run your game and use the 'PREDICT GOALS' button.")

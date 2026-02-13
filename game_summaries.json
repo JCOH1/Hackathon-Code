@@ -194,5 +194,47 @@
     "avg_happiness": 23.0,
     "avg_stress": 51.083333333333336,
     "final_score": 0
+  },
+  {
+    "class": "lower",
+    "education": "polytechnic",
+    "difficulty": "normal",
+    "total_investments": 0,
+    "total_saved": 0,
+    "total_debt_paid": 15550.0,
+    "num_leisure": 0,
+    "num_risky": 0,
+    "had_addiction": 0,
+    "avg_happiness": 23.058823529411764,
+    "avg_stress": 38.0,
+    "final_score": 0
+  },
+  {
+    "class": "middle",
+    "education": "polytechnic",
+    "difficulty": "normal",
+    "total_investments": 5000,
+    "total_saved": 100,
+    "total_debt_paid": 5000,
+    "num_leisure": 2,
+    "num_risky": 0,
+    "had_addiction": 0,
+    "avg_happiness": 38.904761904761905,
+    "avg_stress": 32.857142857142854,
+    "final_score": 10431
+  },
+  {
+    "class": "middle",
+    "education": "polytechnic",
+    "difficulty": "easy",
+    "total_investments": 15000,
+    "total_saved": 10000.0,
+    "total_debt_paid": 5000,
+    "num_leisure": 4,
+    "num_risky": 0,
+    "had_addiction": 0,
+    "avg_happiness": 67.54166666666667,
+    "avg_stress": 4.5,
+    "final_score": 66958
   }
 ]

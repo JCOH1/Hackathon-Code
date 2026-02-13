@@ -865,11 +865,15 @@ class FinanceGame:
                 self.goal_predictor = None
 
     def predict_goal_completion(self):
+        # 1. Safety Check: Ensure model exists and we have enough game data
         if not self.goal_predictor or len(self.monthly_log) < 6:
             return None
+
+        # 2. Extract features from the first 6 months
         early = self.monthly_log[:6]
         avg_hap = sum(m['happiness'] for m in early) / 6
         avg_str = sum(m['stress'] for m in early) / 6
+        
         features = pd.DataFrame([[
             avg_hap,
             avg_str,
@@ -879,16 +883,33 @@ class FinanceGame:
             self.num_leisure,
             self.num_risky
         ]], columns=self.goal_features)
-        probs = self.goal_predictor.predict_proba(features)
-        # probs is a list of arrays, each of shape (1,2) -> [prob_no, prob_yes]
-        results = {
-            'Net Worth': probs[0][0][1],
-            'Emergency Fund': probs[1][0][1],
-            'Debt Free': probs[2][0][1],
-            'Happiness': probs[3][0][1]
-        }
-        return results
 
+        # 3. Get predictions
+        # probs is a list of arrays (one for each of the 4 goals)
+        probs = self.goal_predictor.predict_proba(features)
+
+        # 4. Helper function to safely extract "Success" probability
+        def get_prob(prob_array):
+            # If the model only saw one outcome during training (e.g., always failed),
+            # the array shape will be (1, 1) and index 1 won't exist.
+            if prob_array.shape[1] < 2:
+                # Default to 0.0 (0%) if we can't find the success probability
+                return 0.0 
+            return prob_array[0][1]
+
+        # 5. Build results safely
+        try:
+            results = {
+                'Net Worth':      get_prob(probs[0]),
+                'Emergency Fund': get_prob(probs[1]),
+                'Debt Free':      get_prob(probs[2]),
+                'Happiness':      get_prob(probs[3])
+            }
+        except Exception as e:
+            print(f"⚠️ Prediction error: {e}")
+            return None
+
+        return results
     def _show_goal_predictions(self):
         if not self.goal_predictor or len(self.monthly_log) < 6:
             self.game_message = "Need at least 6 months of data and a trained model."
