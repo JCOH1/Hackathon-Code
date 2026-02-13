@@ -79,12 +79,18 @@ AZURE_OPENAI_ENDPOINT=your_endpoint
 AZURE_OPENAI_API_KEY=your_key
 AZURE_OPENAI_API_VERSION=2023-05-15
 AZURE_OPENAI_DEPLOYMENT=your_deployment_name
+
 Running the Game
 Windows
 bash
+python inject_wins.py
+python train_goal_model.py
 python rijika.py
+
 macOS/Linux
 bash
+python3 inject_wins.py
+python3 train_goal_model.py
 python3 rijika.py
 How to Play
 Game Setup
@@ -301,7 +307,9 @@ financequest/
 ├── .env                     # (optional) Azure OpenAI credentials
 ├── highscore.json           # Created automatically
 ├── game_summaries.json      # Saved game summaries
-└── goal_training_data.json  # Data for ML model (grows with each game)
+├── goal_training_data.json  # Data for ML model (grows with each game)
+├── inject_wins.py           # Generates synthetic winning data for the ML model
+
 Credits
 Created as an educational tool to teach financial literacy through gamification.
 AI features powered by LangChain and Azure OpenAI.
