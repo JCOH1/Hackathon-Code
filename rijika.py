@@ -137,41 +137,41 @@ class AIPoweredFinancialBot:
         self.ready = True
         self.hints = {
             "invest": [
-                "💡 Investing early lets compound interest work for you!",
-                "💡 Try investing $1k-$5k when you have extra cash.",
-                "💡 Higher risk = higher potential returns, but don't invest your emergency fund!"
+                "Investing early lets compound interest work for you!",
+                "Try investing $1k-$5k when you have extra cash.",
+                "Higher risk = higher potential returns, but don't invest your emergency fund!"
             ],
             "save": [
-                "💡 Aim for 3 months of expenses in your emergency fund!",
-                "💡 Save at least $100 each month to build your safety net.",
-                "💡 Emergency fund protects you from unexpected costs like medical bills."
+                "Aim for 3 months of expenses in your emergency fund!",
+                "Save at least $100 each month to build your safety net.",
+                "Emergency fund protects you from unexpected costs like medical bills."
             ],
             "debt": [
-                "💡 Pay off high-interest debt first to reduce stress!",
-                "💡 Every $1k debt payment reduces your stress by 5%.",
-                "💡 Being debt-free is one of the 4 main goals!"
+                "Pay off high-interest debt first to reduce stress!",
+                "Every $1k debt payment reduces your stress by 5%.",
+                "Being debt-free is one of the 4 main goals!"
             ],
             "happiness": [
-                "💡 Low happiness causes debuffs! Take a vacation or date night.",
-                "💡 Balance work and life - don't forget leisure activities!",
-                "💡 Happiness below 30% will make you distracted and lose income."
+                "Low happiness causes debuffs! Take a vacation or date night.",
+                "Balance work and life - don't forget leisure activities!",
+                "Happiness below 30% will make you distracted and lose income."
             ],
             "stress": [
-                "💡 High stress leads to burnout! Use therapy or pay debt.",
-                "💡 Stress above 80% is dangerous - take action quickly!",
-                "💡 Emergency fund and low debt both help reduce stress."
+                "High stress leads to burnout! Use therapy or pay debt.",
+                "Stress above 80% is dangerous - take action quickly!",
+                "Emergency fund and low debt both help reduce stress."
             ],
             "education": [
-                "🎓 University adds +$1500/month income but costs $30k debt and +15 stress!",
-                "🎓 Masters requires University first, adds +$1000/month, costs $50k debt and +20 stress!",
-                "🎓 Higher education is worth it long-term, but manage your stress levels!"
+                "University adds +$1500/month income but costs $30k debt and +15 stress!",
+                "Masters requires University first, adds +$1000/month, costs $50k debt and +20 stress!",
+                "Higher education is worth it long-term, but manage your stress levels!"
             ],
             "general": [
-                f"💡 You have {ACTIONS_PER_MONTH} actions per month - use them wisely!",
-                "💡 Complete all 4 goals for maximum bonus points!",
-                "💡 Right-click any action to lock it for next month!",
-                "💡 Net Worth = Cash + Investments + Emergency - Debt",
-                "💡 You started in Month 0 - survive 24 months to win!"
+                f"You have {ACTIONS_PER_MONTH} actions per month - use them wisely!",
+                "Complete all 4 goals for maximum bonus points!",
+                "Right-click any action to lock it for next month!",
+                "Net Worth = Cash + Investments + Emergency - Debt",
+                "You started in Month 0 - survive 24 months to win!"
             ]
         }
         self.llm = None
@@ -206,7 +206,7 @@ class AIPoweredFinancialBot:
                     history_messages_key="history",
                 )
         except Exception as e:
-            print(f"⚠️ LLM setup failed: {e}")
+            print(f" LLM setup failed: {e}")
             self.llm = None
             self.chat_runner = None
 
@@ -283,7 +283,7 @@ Response: Concise (2–3 sentences max). Use emojis occasionally to be friendly.
 
 
 # ============================================================
-# CHATBOT UI HELPERS  —  FIXED VERSION
+# CHATBOT UI HELPERS
 # ============================================================
 
 def draw_chatbot_icon(screen, x, y, is_thinking=False, has_new_message=False):
@@ -929,7 +929,7 @@ class FinanceGame:
         pygame.draw.rect(self.screen, COLOR_PANEL, (panel_x, panel_y, panel_w, panel_h), border_radius=15)
         pygame.draw.rect(self.screen, COLOR_ACCENT, (panel_x, panel_y, panel_w, panel_h), 3, border_radius=15)
 
-        self._draw_text("🎯 Goal Completion Odds", self.font_medium, COLOR_PRIMARY, panel_x+panel_w//2, panel_y+30, center=True)
+        self._draw_text("Goal Completion Odds", self.font_medium, COLOR_PRIMARY, panel_x+panel_w//2, panel_y+30, center=True)
 
         y = panel_y + 70
         for goal, prob in results.items():
@@ -977,7 +977,7 @@ class FinanceGame:
         plt.style.use('dark_background')
         fig, axes = plt.subplots(2, 2, figsize=(12, 9))
         fig.patch.set_facecolor(norm(COLOR_BG))
-        fig.suptitle(f'📊 GAME DASHBOARD — Final Score: {self.calculate_score():,}', 
+        fig.suptitle(f'GAME DASHBOARD — Final Score: {self.calculate_score():,}', 
                     fontsize=18, fontweight='bold', color=norm(COLOR_PRIMARY), y=0.98)
 
         # Colors for plots (normalized)
@@ -1052,12 +1052,12 @@ class FinanceGame:
         ax.set_facecolor(panel_bg)
         ax.axis('off')
         stats_text = (
-            f"💰 Total Invested: ${self.total_investments:,.0f}\n"
-            f"💵 Total Saved: ${self.total_saved:,.0f}\n"
-            f"💳 Debt Paid: ${self.total_debt_paid:,.0f}\n"
-            f"🎉 Leisure Actions: {self.num_leisure}\n"
-            f"⚠️ Risky Actions: {self.num_risky}\n"
-            f"😷 Had Addiction: {'Yes' if 'addict' in self.debuffs else 'No'}"
+            f"Total Invested: ${self.total_investments:,.0f}\n"
+            f"Total Saved: ${self.total_saved:,.0f}\n"
+            f"Debt Paid: ${self.total_debt_paid:,.0f}\n"
+            f"Leisure Actions: {self.num_leisure}\n"
+            f"Risky Actions: {self.num_risky}\n"
+            f"Had Addiction: {'Yes' if 'addict' in self.debuffs else 'No'}"
         )
         ax.text(0.1, 0.5, stats_text, transform=ax.transAxes,
                 fontsize=13, color=text_color, verticalalignment='center',
@@ -1163,9 +1163,9 @@ class FinanceGame:
             'masters':     EducationConfig("Masters", 50000, 6500, "Max earning potential, massive debt")
         }
         self.difficulty_configs = {
-            'easy':   DifficultyConfig("Easy Mode", 0.05, 0.5, "🟢 Fewer emergencies, stable markets"),
-            'normal': DifficultyConfig("Normal Mode", 0.10, 1.0, "🟡 Balanced challenge"),
-            'hard':   DifficultyConfig("Hard Mode", 0.20, 1.5, "🔴 Frequent emergencies, volatile markets")
+            'easy':   DifficultyConfig("Easy Mode", 0.05, 0.5, "Fewer emergencies, stable markets"),
+            'normal': DifficultyConfig("Normal Mode", 0.10, 1.0, "Balanced challenge"),
+            'hard':   DifficultyConfig("Hard Mode", 0.20, 1.5, "Frequent emergencies, volatile markets")
         }
         self.life_choices = {
             'vacation':     LifeChoice("Vacation", 2500, 15, -10, "leisure"),
@@ -1182,11 +1182,11 @@ class FinanceGame:
             'masters':      LifeChoice("Masters", 50000, 0, 0, "education", one_time=True)
         }
         self.emergency_events = [
-            EmergencyEvent("🚑 Medical Emergency", "You've been diagnosed with a serious health condition requiring immediate treatment.", cost=8000, stress_increase=30),
-            EmergencyEvent("💼 Job Loss", "Your company has downsized and you've been laid off. No income for 3 months.", months_no_income=3, stress_increase=40),
-            EmergencyEvent("📉 Market Crash", "The stock market has crashed! Your investments have lost significant value.", investment_loss=0.4, stress_increase=25),
-            EmergencyEvent("🏠 Home Emergency", "Major repairs needed for your living space.", cost=3500, stress_increase=15),
-            EmergencyEvent("👨‍👩‍👧 Family Emergency", "A family member needs financial assistance urgently.", cost=5000, stress_increase=20)
+            EmergencyEvent("Medical Emergency", "You've been diagnosed with a serious health condition requiring immediate treatment.", cost=8000, stress_increase=30),
+            EmergencyEvent("Job Loss", "Your company has downsized and you've been laid off. No income for 3 months.", months_no_income=3, stress_increase=40),
+            EmergencyEvent("Market Crash", "The stock market has crashed! Your investments have lost significant value.", investment_loss=0.4, stress_increase=25),
+            EmergencyEvent("Home Emergency", "Major repairs needed for your living space.", cost=3500, stress_increase=15),
+            EmergencyEvent("Family Emergency", "A family member needs financial assistance urgently.", cost=5000, stress_increase=20)
         ]
 
     def _init_ui_elements(self):
@@ -1197,9 +1197,9 @@ class FinanceGame:
 
     def _init_title_buttons(self):
         self.cached_buttons[GameState.TITLE] = [
-            Button(SCREEN_WIDTH//2-150, 500, 300, 70, "New Game", COLOR_PRIMARY, text_color=COLOR_BG, button_id="new_game", gradient=True, icon="🎮"),
-            Button(SCREEN_WIDTH//2-150, 590, 300, 70, "Skip Tutorial", COLOR_PANEL, text_color=COLOR_TEXT, button_id="skip_tutorial", icon="⏩"),
-            Button(SCREEN_WIDTH-150, 20, 130, 50, "Help", COLOR_ACCENT, text_color=COLOR_TEXT, button_id="help_title", icon="❓")
+            Button(SCREEN_WIDTH//2-150, 500, 300, 70, "New Game", COLOR_PRIMARY, text_color=COLOR_BG, button_id="new_game", gradient=True),
+            Button(SCREEN_WIDTH//2-150, 590, 300, 70, "Skip Tutorial", COLOR_PANEL, text_color=COLOR_TEXT, button_id="skip_tutorial"),
+            Button(SCREEN_WIDTH-150, 20, 130, 50, "Help", COLOR_ACCENT, text_color=COLOR_TEXT, button_id="help_title",)
         ]
         self.cached_buttons[GameState.TITLE][0].callback = lambda: setattr(self, 'state', GameState.TUTORIAL)
         self.cached_buttons[GameState.TITLE][1].callback = lambda: setattr(self, 'state', GameState.SETUP)
@@ -1209,9 +1209,9 @@ class FinanceGame:
         panel_rect = pygame.Rect(200, 150, SCREEN_WIDTH-400, 500)
         btn_y = panel_rect.bottom - 90
         self.cached_buttons[GameState.TUTORIAL] = [
-            Button(panel_rect.left+50, btn_y, 180, 50, "Previous", COLOR_PANEL_HOVER, button_id="tut_prev", icon="◀"),
-            Button(panel_rect.right-230, btn_y, 180, 50, "Next", COLOR_PRIMARY, text_color=COLOR_BG, button_id="tut_next", gradient=True, icon="▶"),
-            Button(SCREEN_WIDTH-250, 800, 200, 50, "Skip All", COLOR_PANEL, button_id="tut_skip", icon="⏭")
+            Button(panel_rect.left+50, btn_y, 180, 50, "Previous", COLOR_PANEL_HOVER, button_id="tut_prev"),
+            Button(panel_rect.right-230, btn_y, 180, 50, "Next", COLOR_PRIMARY, text_color=COLOR_BG, button_id="tut_next", gradient=True),
+            Button(SCREEN_WIDTH-250, 800, 200, 50, "Skip All", COLOR_PANEL, button_id="tut_skip")
         ]
         self.cached_buttons[GameState.TUTORIAL][0].callback = self._tut_prev
         self.cached_buttons[GameState.TUTORIAL][1].callback = self._tut_next
@@ -1219,8 +1219,8 @@ class FinanceGame:
 
     def _init_setup_buttons(self):
         self.cached_buttons[GameState.SETUP] = [
-            Button(SCREEN_WIDTH//2-120, 820, 240, 55, "Start Journey", COLOR_SUCCESS, text_color=COLOR_BG, button_id="setup_start", gradient=True, icon="🚀"),
-            Button(SCREEN_WIDTH//2-80, 882, 160, 40, "Back", COLOR_PANEL, button_id="setup_back", icon="↩")
+            Button(SCREEN_WIDTH//2-120, 820, 240, 55, "Start Journey", COLOR_SUCCESS, text_color=COLOR_BG, button_id="setup_start", gradient=True),
+            Button(SCREEN_WIDTH//2-80, 882, 160, 40, "Back", COLOR_PANEL, button_id="setup_back")
         ]
         self.cached_buttons[GameState.SETUP][0].callback = self.start_game
         self.cached_buttons[GameState.SETUP][1].callback = lambda: setattr(self, 'state', GameState.TITLE)
@@ -1228,9 +1228,9 @@ class FinanceGame:
     def _init_game_over_buttons(self):
         center_x = SCREEN_WIDTH // 2
         self.cached_buttons[GameState.GAME_OVER] = [
-            Button(center_x - 220, 680, 200, 60, "Play Again", COLOR_SUCCESS, text_color=COLOR_BG, button_id="play_again", gradient=True, icon="🔄"),
-            Button(center_x + 20, 680, 200, 60, "Main Menu", COLOR_PANEL, button_id="menu", icon="🏠"),
-            Button(center_x - 100, 760, 200, 50, "View Statistics", COLOR_ACCENT, text_color=COLOR_TEXT, button_id="stats", icon="📊")
+            Button(center_x - 220, 680, 200, 60, "Play Again", COLOR_SUCCESS, text_color=COLOR_BG, button_id="play_again", gradient=True),
+            Button(center_x + 20, 680, 200, 60, "Main Menu", COLOR_PANEL, button_id="menu"),
+            Button(center_x - 100, 760, 200, 50, "View Statistics", COLOR_ACCENT, text_color=COLOR_TEXT, button_id="stats")
         ]
         self.cached_buttons[GameState.GAME_OVER][0].callback = self._reset_for_new_game
         self.cached_buttons[GameState.GAME_OVER][1].callback = lambda: setattr(self, 'state', GameState.TITLE)
@@ -1259,7 +1259,7 @@ class FinanceGame:
         self.cached_buttons[GameState.PLAYING].append(chatbot_btn)
 
         # ========== NEW PREDICT BUTTON ==========
-        predict_btn = Button(SCREEN_WIDTH-350, 20, 120, 40, "PREDICT GOALS", COLOR_ACCENT, COLOR_TEXT, button_id="predict", icon="🎯")
+        predict_btn = Button(SCREEN_WIDTH-350, 20, 120, 40, "PREDICT GOALS", COLOR_ACCENT, COLOR_TEXT, button_id="predict")
         predict_btn.callback = self._show_goal_predictions
         self.cached_buttons[GameState.PLAYING].append(predict_btn)
         # ========================================
@@ -1302,16 +1302,16 @@ class FinanceGame:
             if c.choice_type in ['utility', 'education']:
                 enabled = self._is_choice_available(k, c)
                 col = COLOR_ACCENT if c.choice_type == 'education' else COLOR_PANEL
-                tooltip = f"📚 {c.name}: +${c.cost:,.0f} investment in your future!" if c.choice_type == 'education' else f"🎁 {c.name}"
+                tooltip = f"{c.name}: +${c.cost:,.0f} investment in your future!" if c.choice_type == 'education' else f"{c.name}"
                 util_actions.append((f"{c.name}\n${c.cost:,.0f}", lambda k=k: self.take_life_choice(k), enabled, col, tooltip))
         if util_actions:
             ay = self._create_section_buttons("GROWTH & ASSETS", util_actions, ay, btn_w, btn_h, view_rect)
         if self.debuffs:
             health_actions = []
             if 'addict' in self.debuffs:
-                health_actions.append(("🏥 Rehab\n$1.5k", self.treat_addiction, self.money >= 1500, COLOR_DANGER, "Treatment for addiction"))
+                health_actions.append(("Rehab\n$1.5k", self.treat_addiction, self.money >= 1500, COLOR_DANGER, "Treatment for addiction"))
             if 'unhappy' in self.debuffs or 'distracted' in self.debuffs:
-                health_actions.append(("🧠 Therapy\n$800", self.seek_therapy, self.money >= 800, COLOR_ACCENT, "Clear debuffs and reduce stress"))
+                health_actions.append(("Therapy\n$800", self.seek_therapy, self.money >= 800, COLOR_ACCENT, "Clear debuffs and reduce stress"))
             if health_actions:
                 ay = self._create_section_buttons("HEALTH", health_actions, ay, btn_w, btn_h, view_rect)
         self.max_scroll = max(0, ay - view_rect.height + 100)
@@ -1333,7 +1333,7 @@ class FinanceGame:
             screen_y = view_rect.y + by_rel - self.scroll_offset
             original_y = view_rect.y + by_rel
             is_locked = self.locked_action and self.locked_action['callback'] == callback
-            display_label = f"🔒 {label}" if is_locked else label
+            display_label = f"{label}" if is_locked else label
             btn = Button(screen_x, screen_y, btn_w, btn_h, display_label, color,
                          button_id=f"action_{len(self.cached_buttons[GameState.PLAYING])}",
                          tooltip=tooltip + "\n[Right-click to lock/unlock for next month]")
@@ -1594,7 +1594,7 @@ class FinanceGame:
         if choice.choice_type == 'risky':
             if self._handle_risky_choice(choice_key, choice): return
         if choice_key == 'vehicle': self.has_vehicle = True
-        self.game_message = f"✨ {choice.name}: Happiness +{choice.happiness:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+        self.game_message = f"{choice.name}: Happiness +{choice.happiness:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
         self.need_button_update = True
 
     def _validate_life_choice(self, choice_key, choice):
@@ -1624,24 +1624,24 @@ class FinanceGame:
     def _handle_risky_choice(self, choice_key, choice):
         if choice_key == 'gambling' and random.random() < choice.win_chance:
             self.money += choice.win_amount
-            self.game_message = f"💰 You won ${choice.win_amount:.0f}!"
+            self.game_message = f"You won ${choice.win_amount:.0f}!"
             self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_WARNING)
             self.need_button_update = True; return True
         if choice.debuff_chance > 0 and random.random() < choice.debuff_chance:
             if choice.debuff not in self.debuffs:
                 self.debuffs.append(choice.debuff)
-                self.game_message = f"⚠️ Addicted to {choice.name}!"
+                self.game_message = f"Addicted to {choice.name}!"
                 self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_DANGER)
                 self.need_button_update = True; return True
         return False
 
     def invest_money(self, amount):
-        if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
+        if self.actions_remaining <= 0: self.game_message = f"No actions left!"; return
         if self.money >= amount:
             self.money -= amount; self.investments += amount
             self.total_investments += amount   # for statistics
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
-            self.game_message = f"💰 Invested ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+            self.game_message = f"Invested ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_PRIMARY)
             self.need_button_update = True
 
@@ -1651,7 +1651,7 @@ class FinanceGame:
         if withdrawal > 0:
             self.investments -= withdrawal; self.money += withdrawal
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
-            self.game_message = f"💸 Withdrew ${withdrawal:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+            self.game_message = f"Withdrew ${withdrawal:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self.need_button_update = True
         else:
             self.game_message = "No investments!"
@@ -1662,11 +1662,11 @@ class FinanceGame:
             self.money -= amount; self.emergency_fund += amount
             self.total_saved += amount   # for statistics
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
-            self.game_message = f"🏦 Saved ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+            self.game_message = f"Saved ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self.need_button_update = True
 
     def pay_off_debt(self, amount):
-        if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
+        if self.actions_remaining <= 0: self.game_message = f"No actions left!"; return
         payment = min(amount, self.debt, self.money)
         if payment > 0:
             self.money -= payment; self.debt -= payment; self.stress = max(0, self.stress - 5)
@@ -1694,7 +1694,7 @@ class FinanceGame:
                 self.game_message = f"💵 Saved ${amount:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
                 self.need_button_update = True
             else:
-                self.game_message = "❌ Not enough money"
+                self.game_message = "Not enough money"
         elif action_type == 'withdraw':
             self._withdraw_emergency(amount)
         elif action_type == 'pay_debt':
@@ -1702,45 +1702,45 @@ class FinanceGame:
         self.close_dropdown()
 
     def _withdraw_emergency(self, amount):
-        if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
+        if self.actions_remaining <= 0: self.game_message = f"No actions left!"; return
         withdrawal = min(amount, self.emergency_fund)
         if withdrawal > 0:
             self.emergency_fund -= withdrawal; self.money += withdrawal
             self.actions_taken_this_month += 1; self.actions_remaining -= 1
-            self.game_message = f"🏦 Withdrew ${withdrawal:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+            self.game_message = f"Withdrew ${withdrawal:.0f} | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self.need_button_update = True
 
     def handle_custom_input_submit(self):
         try:
             amount = float(self.custom_input_text)
             if amount <= 0 or amount > 100000:
-                self.game_message = "❌ Amount must be between $1 and $100,000"; return
+                self.game_message = "Amount must be between $1 and $100,000"; return
             self.execute_financial_action(self.custom_input_type, amount)
             self.show_custom_input = False; self.custom_input_text = ""
         except ValueError:
-            self.game_message = "❌ Invalid amount"
+            self.game_message = "Invalid amount"
 
     def treat_addiction(self):
-        if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
+        if self.actions_remaining <= 0: self.game_message = f"No actions left!"; return
         if self.money < 1500: self.game_message = "Need $1500 for treatment"; return
         self.money -= 1500; self.actions_taken_this_month += 1; self.actions_remaining -= 1
         if random.random() < self.happiness / 100:
             self.debuffs = [d for d in self.debuffs if d != 'addict']
             self.happiness = min(100, self.happiness + 10)
-            self.game_message = f"🏥 Addiction cured! | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+            self.game_message = f"Addiction cured! | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
             self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_SUCCESS)
         else:
-            self.game_message = f"❌ Treatment failed. | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+            self.game_message = f"Treatment failed. | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
         self.need_button_update = True
 
     def seek_therapy(self):
-        if self.actions_remaining <= 0: self.game_message = f"⚠️ No actions left!"; return
+        if self.actions_remaining <= 0: self.game_message = f"No actions left!"; return
         if self.money < 800: self.game_message = "Need $800 for therapy"; return
         self.money -= 800
         self.debuffs = [d for d in self.debuffs if d not in ['unhappy', 'distracted']]
         self.stress = max(0, self.stress - 20); self.happiness = min(100, self.happiness + 15)
         self.actions_taken_this_month += 1; self.actions_remaining -= 1
-        self.game_message = f"🧠 Therapy successful! | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
+        self.game_message = f"Therapy successful! | Actions: {self.actions_remaining}/{ACTIONS_PER_MONTH}"
         self._add_particle(self.screen.get_width()//2, self.screen.get_height()//2, COLOR_ACCENT)
         self.need_button_update = True
 
@@ -1825,7 +1825,7 @@ class FinanceGame:
         pygame.draw.rect(self.screen, COLOR_PANEL, (mx, my, mw, 64), border_top_left_radius=24, border_top_right_radius=24)
         self._draw_text("✨ CUSTOM AVATAR CREATOR", self.font_medium, COLOR_ACCENT, mx + mw // 2, my + 32, center=True, glow=True)
         tab_y = my + 76
-        for i, (tab_id, tab_label) in enumerate([('builder', '🎨 Build Your Own'), ('quick', '⚡ Quick Pick')]):
+        for i, (tab_id, tab_label) in enumerate([('builder', 'Build Your Own'), ('quick', 'Quick Pick')]):
             tx = mx + 30 + i * 390
             tab_rect = pygame.Rect(tx, tab_y, 370, 40)
             is_active = ac.tab == tab_id
@@ -2038,7 +2038,7 @@ class FinanceGame:
 
     def _draw_setup(self, events):
         self._draw_gradient_background()
-        self._draw_text("⚡ CHARACTER SETUP", self.font_large, COLOR_PRIMARY, SCREEN_WIDTH//2, 40, center=True, glow=True)
+        self._draw_text("CHARACTER SETUP", self.font_large, COLOR_PRIMARY, SCREEN_WIDTH//2, 40, center=True, glow=True)
         section_width = 380
         gap = 35
         top_row_total = 3 * section_width + 2 * gap
@@ -2088,7 +2088,7 @@ class FinanceGame:
             pygame.draw.line(self.screen, c, (btn_rect.x, btn_rect.y + i), (btn_rect.right, btn_rect.y + i))
         pygame.draw.rect(self.screen, COLOR_PRIMARY if is_hov else COLOR_ACCENT, btn_rect, 2, border_radius=12)
         bf = pygame.font.SysFont("Arial", 18, bold=True)
-        bs = bf.render("✏️  Customise Avatar", True, COLOR_BG)
+        bs = bf.render("Customise Avatar", True, COLOR_BG)
         self.screen.blit(bs, bs.get_rect(center=btn_rect.center))
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -2108,7 +2108,7 @@ class FinanceGame:
         if self.high_score > 0:
             pygame.draw.rect(self.screen, COLOR_PANEL, (SCREEN_WIDTH//2-200, 400, 400, 60), border_radius=15)
             pygame.draw.rect(self.screen, COLOR_WARNING, (SCREEN_WIDTH//2-200, 400, 400, 60), 2, border_radius=15)
-            self._draw_text(f"🏆 High Score: {self.high_score:,}", self.font_medium, COLOR_WARNING, SCREEN_WIDTH//2, 430, center=True)
+            self._draw_text(f"High Score: {self.high_score:,}", self.font_medium, COLOR_WARNING, SCREEN_WIDTH//2, 430, center=True)
         for btn in self.cached_buttons[GameState.TITLE]:
             btn.draw(self.screen, self.font_medium)
         for event in events:
@@ -2150,7 +2150,7 @@ class FinanceGame:
         for key, config in self.class_configs.items():
             color = COLOR_PRIMARY if self.selected_class == key else COLOR_PANEL
             text_color = COLOR_BG if self.selected_class == key else COLOR_TEXT
-            btn = Button(x, y, width, 115, f"{config.avatar_emoji} {config.name}\n💰 ${config.starting_money:,.0f}\n💳 ${config.debt:,.0f}",
+            btn = Button(x, y, width, 115, f"{config.avatar_emoji} {config.name}\n ${config.starting_money:,.0f}\n ${config.debt:,.0f}",
                          color, text_color, button_id=f"class_{key}", tooltip=config.description)
             btn.draw(self.screen, self.font_small)
             for event in events:
@@ -2167,8 +2167,8 @@ class FinanceGame:
         for key, config in self.education_configs.items():
             color = COLOR_PRIMARY if self.selected_education == key else COLOR_PANEL
             text_color = COLOR_BG if self.selected_education == key else COLOR_TEXT
-            cost_text = "🎓 Free" if config.cost == 0 else f"📚 ${config.cost:,}"
-            btn = Button(x, y, width, 115, f"{config.name}\n💵 ${config.income:,.0f}/mo\n{cost_text}",
+            cost_text = "Free" if config.cost == 0 else f"${config.cost:,}"
+            btn = Button(x, y, width, 115, f"{config.name}\n ${config.income:,.0f}/mo\n{cost_text}",
                          color, text_color, button_id=f"edu_{key}", tooltip=config.description)
             btn.draw(self.screen, self.font_small)
             for event in events:
@@ -2213,7 +2213,7 @@ class FinanceGame:
         draw_chatbot_icon(self.screen, 80, SCREEN_HEIGHT-80,
                           self.chatbot.is_thinking, self.chatbot_has_new_message)
 
-        # ── CHATBOT MODAL  (dynamic version) ──────────────────────────────
+        # ── CHATBOT MODAL──────────────────────────────
         if self.show_chatbot:
             result = draw_chatbot_modal(
                 self.screen, self.font_medium, self.chatbot,
@@ -2263,9 +2263,9 @@ class FinanceGame:
                 for btn in self.cached_buttons[GameState.PLAYING]:
                     if btn.visible and btn.rect.collidepoint(event.pos) and hasattr(btn, 'lock_data') and btn.lock_data:
                         if self.locked_action and self.locked_action['callback'] == btn.lock_data['callback']:
-                            self.locked_action = None; self.game_message = "🔓 Action unlocked"
+                            self.locked_action = None; self.game_message = "Action unlocked"
                         else:
-                            self.locked_action = btn.lock_data; self.game_message = f"🔒 Locked: {btn.lock_data['name']}"
+                            self.locked_action = btn.lock_data; self.game_message = f"Locked: {btn.lock_data['name']}"
                         self.need_button_update = True; break
             for btn in self.cached_buttons[GameState.PLAYING]:
                 if btn.button_id in ["next_month", "help", "chatbot"]: btn.handle_event(event)
@@ -2307,22 +2307,22 @@ class FinanceGame:
         pygame.draw.line(self.screen, COLOR_PRIMARY, (sidebar_w, header_height), (sidebar_w, SCREEN_HEIGHT-100), 2)
         sy = header_height + 30
         p = 30
-        self._draw_text("🧠 WELL-BEING", self.font_small, COLOR_ACCENT, p, sy)
+        self._draw_text("WELL-BEING", self.font_small, COLOR_ACCENT, p, sy)
         sy += 40
-        self._draw_text(f"😊 Happiness: {self.happiness:.0f}%", self.font_small, COLOR_TEXT, p, sy)
+        self._draw_text(f"Happiness: {self.happiness:.0f}%", self.font_small, COLOR_TEXT, p, sy)
         self._draw_progress_bar(p, sy+25, sidebar_w-60, 12, self.happiness, COLOR_SUCCESS)
         sy += 55
-        self._draw_text(f"😰 Stress: {self.stress:.0f}%", self.font_small, COLOR_TEXT, p, sy)
+        self._draw_text(f"Stress: {self.stress:.0f}%", self.font_small, COLOR_TEXT, p, sy)
         self._draw_progress_bar(p, sy+25, sidebar_w-60, 12, self.stress, COLOR_DANGER)
         sy += 65
         pygame.draw.line(self.screen, COLOR_PANEL_HOVER, (p, sy), (sidebar_w-p, sy)); sy += 25
-        self._draw_text("💰 FINANCES", self.font_small, COLOR_ACCENT, p, sy); sy += 35
+        self._draw_text("FINANCES", self.font_small, COLOR_ACCENT, p, sy); sy += 35
         for label, val, col in [
-            ("📈 Income", f"+${self.monthly_income:,.0f}", COLOR_SUCCESS),
-            ("📉 Expenses", f"-${(self.rent+self.groceries+self.transport):,.0f}", COLOR_DANGER),
-            ("💳 Debt", f"${self.debt:,.0f}", COLOR_DANGER),
-            ("📊 Investments", f"${self.investments:,.0f}", COLOR_PRIMARY),
-            ("🏦 Emergency", f"${self.emergency_fund:,.0f}", COLOR_WARNING),
+            ("Income", f"+${self.monthly_income:,.0f}", COLOR_SUCCESS),
+            ("Expenses", f"-${(self.rent+self.groceries+self.transport):,.0f}", COLOR_DANGER),
+            ("Debt", f"${self.debt:,.0f}", COLOR_DANGER),
+            ("Investments", f"${self.investments:,.0f}", COLOR_PRIMARY),
+            ("Emergency", f"${self.emergency_fund:,.0f}", COLOR_WARNING),
         ]:
             self._draw_text(label, self.font_small, COLOR_TEXT_DIM, p, sy)
             self._draw_text(val, self.font_small, col, sidebar_w-p-50, sy)
@@ -2334,7 +2334,7 @@ class FinanceGame:
         self._draw_text(self.education_configs[self.current_education_level].name, self.font_small, COLOR_ACCENT, p+120, sy)
         if self.debuffs:
             sy += 45
-            self._draw_text("⚠️ Active Effects:", self.font_small, COLOR_DANGER, p, sy); sy += 30
+            self._draw_text("Active Effects:", self.font_small, COLOR_DANGER, p, sy); sy += 30
             for d in self.debuffs:
                 pygame.draw.rect(self.screen, COLOR_DANGER, (p, sy, 140, 28), border_radius=6)
                 self._draw_text(d.upper(), self.font_tiny, COLOR_BG, p+10, sy+6)
@@ -2385,7 +2385,7 @@ class FinanceGame:
         action_rect = pygame.Rect(SCREEN_WIDTH-action_panel_w, header_height, action_panel_w, SCREEN_HEIGHT-header_height-100)
         pygame.draw.rect(self.screen, (20, 30, 50), action_rect)
         pygame.draw.line(self.screen, COLOR_PRIMARY, (action_rect.x, header_height), (action_rect.x, SCREEN_HEIGHT-100), 2)
-        self._draw_text("⚡ AVAILABLE ACTIONS", self.font_small, COLOR_PRIMARY, action_rect.x+20, header_height+20)
+        self._draw_text("AVAILABLE ACTIONS", self.font_small, COLOR_PRIMARY, action_rect.x+20, header_height+20)
         if self.active_dropdown:
             mouse_pos = pygame.mouse.get_pos()
             mouse_over_button = mouse_over_dropdown = False
@@ -2440,18 +2440,18 @@ class FinanceGame:
         cs = pygame.Surface((pw-40, content_h), pygame.SRCALPHA); cs.fill((0,0,0,0))
         pygame.draw.rect(self.screen, COLOR_BG, (px, py, pw, ph), border_radius=20)
         pygame.draw.rect(self.screen, COLOR_PRIMARY, (px, py, pw, ph), 4, border_radius=20)
-        self._draw_text("📚 GAME GUIDE", self.font_large, COLOR_PRIMARY, px+pw//2, py+40, center=True, glow=True)
+        self._draw_text("GAME GUIDE", self.font_large, COLOR_PRIMARY, px+pw//2, py+40, center=True, glow=True)
         sections = [
-            ("🎯 Goal", "Complete 24 months with high net worth and happiness!"),
-            ("⚡ Actions", f"You have {ACTIONS_PER_MONTH} actions per month. Right-click to lock actions for next month."),
-            ("💰 Financial Tips", "• Invest early for compound returns\n• Keep 3 months income as emergency fund\n• Pay off high-interest debt first"),
-            ("😊 Well-being", "• Low happiness causes debuffs\n• High stress leads to burnout\n• Balance work and life!"),
-            ("🎓 Education", "• Increases monthly income permanently\n• Costs added to debt\n• Higher education = higher income"),
-            ("⚠️ Warning Signs", "• Red money = trouble ahead\n• Orange stress bar = burnout risk\n• Debuffs reduce your income"),
-            ("💳 Financial Actions", "• Invest: Grow your wealth over time\n• Save: Build emergency fund\n• Withdraw: Take from emergency fund\n• Pay Debt: Reduce debt and stress"),
-            ("🎮 Lifestyle Choices", "• Leisure: Boost happiness, reduce stress\n• Risky: Potential rewards but addiction risk\n• Education: Long-term income boost\n• Utilities: One-time purchases"),
-            ("🔒 Lock System", "Right-click any action button to lock it. Locked actions automatically execute at the start of next month!"),
-            ("🏆 Scoring", "Final score = Net Worth + Goal Bonuses + Happiness × 100 + Months × 500"),
+            ("Goal", "Complete 24 months with high net worth and happiness!"),
+            ("Actions", f"You have {ACTIONS_PER_MONTH} actions per month. Right-click to lock actions for next month."),
+            ("Financial Tips", "• Invest early for compound returns\n• Keep 3 months income as emergency fund\n• Pay off high-interest debt first"),
+            ("Well-being", "• Low happiness causes debuffs\n• High stress leads to burnout\n• Balance work and life!"),
+            ("Education", "• Increases monthly income permanently\n• Costs added to debt\n• Higher education = higher income"),
+            ("Warning Signs", "• Red money = trouble ahead\n• Orange stress bar = burnout risk\n• Debuffs reduce your income"),
+            ("Financial Actions", "• Invest: Grow your wealth over time\n• Save: Build emergency fund\n• Withdraw: Take from emergency fund\n• Pay Debt: Reduce debt and stress"),
+            ("Lifestyle Choices", "• Leisure: Boost happiness, reduce stress\n• Risky: Potential rewards but addiction risk\n• Education: Long-term income boost\n• Utilities: One-time purchases"),
+            ("Lock System", "Right-click any action button to lock it. Locked actions automatically execute at the start of next month!"),
+            ("Scoring", "Final score = Net Worth + Goal Bonuses + Happiness × 100 + Months × 500"),
         ]
         sh = sum(35 + len(s[1].split('\n'))*25 + 15 for s in sections)
         self.help_max_scroll = max(0, sh - (ph - 150))
@@ -2493,9 +2493,9 @@ class FinanceGame:
             self._draw_text(line, self.font_medium, COLOR_TEXT, x+w//2, ty, center=True); ty += 40
         iy = ty + 30
         if self.current_event.cost > 0:
-            self._draw_text(f"💰 Cost: -${self.current_event.cost:,.0f}", self.font_medium, COLOR_DANGER, x+w//2, iy, center=True); iy += 35
+            self._draw_text(f"Cost: -${self.current_event.cost:,.0f}", self.font_medium, COLOR_DANGER, x+w//2, iy, center=True); iy += 35
         if self.current_event.stress_increase > 0:
-            self._draw_text(f"😰 Stress: +{self.current_event.stress_increase}%", self.font_medium, COLOR_DANGER, x+w//2, iy, center=True)
+            self._draw_text(f"Stress: +{self.current_event.stress_increase}%", self.font_medium, COLOR_DANGER, x+w//2, iy, center=True)
         cont_btn = Button(x+w//2-100, y+h-80, 200, 50, "Continue", COLOR_PRIMARY, COLOR_BG, gradient=True, icon="▶")
         cont_btn.callback = self.handle_event_close
         cont_btn.hover = cont_btn.rect.collidepoint(pygame.mouse.get_pos())
@@ -2596,10 +2596,10 @@ class FinanceGame:
             self._draw_text("Congratulations! You've set a new record!", self.font_medium, COLOR_SUCCESS, SCREEN_WIDTH//2, 310, center=True)
         sy = 380
         for label, val in [
-            ("💰 Net Worth", f"${(self.money+self.investments+self.emergency_fund-self.debt):,.0f}"),
-            ("😊 Happiness", f"{self.happiness:.0f}%"),
-            ("🎯 Goals Met", f"{sum(1 for g in self.goals.values() if g['completed'])}/4"),
-            ("📅 Months", f"{self.current_month}")
+            ("Net Worth", f"${(self.money+self.investments+self.emergency_fund-self.debt):,.0f}"),
+            ("Happiness", f"{self.happiness:.0f}%"),
+            ("Goals Met", f"{sum(1 for g in self.goals.values() if g['completed'])}/4"),
+            ("Months", f"{self.current_month}")
         ]:
             self._draw_text(label, self.font_medium, COLOR_TEXT_DIM, SCREEN_WIDTH//2-150, sy)
             self._draw_text(val, self.font_medium, COLOR_TEXT, SCREEN_WIDTH//2+150, sy)
